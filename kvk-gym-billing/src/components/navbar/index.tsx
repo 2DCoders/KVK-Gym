@@ -69,22 +69,6 @@ export default function Navbar({
           </h1>
         </div>
 
-        {/* Center Section - Search Bar (Desktop) */}
-        <div className="hidden md:flex items-center flex-1 max-w-xs mx-8">
-          <div className="w-full relative">
-            <div className="relative flex items-center bg-light-gray rounded-full px-4 py-2 transition-all duration-200 focus-within:ring-2 focus-within:ring-primary/20 focus-within:bg-white">
-              <Search size={18} className="text-gray-400" />
-              <input
-                type="text"
-                placeholder="Search members, records..."
-                value={searchValue}
-                onChange={(e) => setSearchValue(e.target.value)}
-                className="ml-2 bg-transparent outline-none text-sm w-full placeholder-gray-500 text-gray-900"
-              />
-            </div>
-          </div>
-        </div>
-
         {/* Right Section - Actions */}
         <div className="flex items-center gap-3 md:gap-4">
           {/* Mobile Search Toggle */}
