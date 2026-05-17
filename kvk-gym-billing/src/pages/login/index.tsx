@@ -25,7 +25,7 @@ export default function Login() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-900 to-slate-900 relative">
+    <div className="h-screen w-screen bg-gradient-to-br from-slate-900 via-blue-900 to-slate-900 relative overflow-hidden">
       {/* Animated background elements */}
       <div className="absolute inset-0 pointer-events-none">
         {/* Floating circles */}
@@ -35,10 +35,10 @@ export default function Login() {
       </div>
 
       {/* Main container */}
-      <div className="relative z-10 min-h-screen flex">
+      <div className="relative z-10 h-screen w-screen flex overflow-hidden">
         {/* Left side - Branding section (hidden on mobile) */}
-        <div className="hidden md:flex md:w-1/2 flex-col justify-center items-start px-12 lg:px-20">
-          <div className="max-w-md animate-fade-in">
+        <div className="hidden md:flex md:w-1/2 flex-col justify-center items-start px-12 lg:px-20 overflow-hidden">
+          <div className="max-w-md animate-fade-in max-h-screen overflow-y-auto pr-2">
             {/* Logo and title */}
             <div className="mb-12 flex items-center gap-4">
               <div className="w-16 h-16 bg-gradient-to-br from-primary to-blue-600 rounded-2xl flex items-center justify-center shadow-lg hover:shadow-xl transition-shadow">
@@ -103,8 +103,8 @@ export default function Login() {
         </div>
 
         {/* Right side - Login form */}
-        <div className="w-full md:w-1/2 flex flex-col justify-center items-center px-6 py-12 md:py-0 md:px-12 lg:px-20">
-          <div className="w-full max-w-md animate-slide-up">
+        <div className="w-full md:w-1/2 flex flex-col justify-center items-center px-4 py-0 md:px-12 lg:px-20 overflow-hidden">
+          <div className="w-full max-w-md animate-slide-up overflow-y-auto max-h-screen md:max-h-none">
             {/* Glassmorphism card */}
             <div className="backdrop-blur-xl bg-slate-800/40 border border-blue-400/20 rounded-3xl shadow-2xl p-8 md:p-10">
               {/* Header */}
@@ -193,27 +193,6 @@ export default function Login() {
                 >
                   <LogIn className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
                   Sign In
-                </Button>
-
-                {/* Divider */}
-                <div className="relative my-4">
-                  <div className="absolute inset-0 flex items-center">
-                    <div className="w-full border-t border-slate-600/30"></div>
-                  </div>
-                  <div className="relative flex justify-center text-sm">
-                    <span className="px-2 bg-slate-800/40 text-gray-400 text-xs font-medium">
-                      or
-                    </span>
-                  </div>
-                </div>
-
-                {/* Alternative option */}
-                <Button
-                  type="button"
-                  variant="outline"
-                  className="w-full h-9 border border-slate-600/50 text-gray-300 font-medium rounded-lg hover:bg-slate-700/30 hover:border-blue-400/30 transition-all text-sm"
-                >
-                  Continue with SSO
                 </Button>
               </form>
 
