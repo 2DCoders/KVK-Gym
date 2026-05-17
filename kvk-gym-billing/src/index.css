@@ -1,0 +1,10 @@
+@import "tailwindcss";
+
+* {
+  font-family: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+}
+
+body {
+  background: linear-gradient(135deg, #f8f9fa 0%, #f0f2f5 100%);
+  min-height: 100vh;
+}
