@@ -3,6 +3,7 @@ import { Eye, EyeOff, Mail, Lock, LogIn, Dumbbell } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { useNavigate } from 'react-router-dom'
 
 export default function Login() {
   const [showPassword, setShowPassword] = useState(false)
@@ -10,6 +11,8 @@ export default function Login() {
     userId: '',
     password: '',
   })
+
+  const navigate = useNavigate()
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value, type, checked } = e.target
@@ -22,6 +25,7 @@ export default function Login() {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
     console.log('Login submitted:', formData)
+    navigate('/dashboard')
   }
 
   return (
