@@ -96,29 +96,29 @@ export default function Login() {
             {/* Bottom accent */}
             <div className="mt-16 pt-8 border-t border-white/10">
               <p className="text-sm text-gray-400">
-                Trusted by <span className="font-semibold text-white">500+</span> fitness centers worldwide
+                Developed by <span className="font-semibold text-white">2D-Coders</span> | &copy; 2026 KVK Gym. All rights reserved.
               </p>
             </div>
           </div>
         </div>
 
         {/* Right side - Login form */}
-        <div className="w-full md:w-1/2 flex flex-col justify-center items-center px-4 py-0 md:px-12 lg:px-20 overflow-hidden">
+        <div className="w-full md:w-1/2 flex flex-col justify-center items-center px-4 py-0 md:px-12 lg:px-20 overflow-hidden bg-gradient-to-br from-gray-50 to-gray-100">
           <div className="w-full max-w-md animate-slide-up overflow-y-auto max-h-screen md:max-h-none">
-            {/* Glassmorphism card */}
-            <div className="backdrop-blur-xl bg-slate-800/40 border border-blue-400/20 rounded-3xl shadow-2xl p-8 md:p-10">
+            {/* White card */}
+            <div className="bg-white border border-gray-200 rounded-3xl shadow-xl p-8 md:p-10">
               {/* Header */}
               <div className="mb-6">
                 <div className="flex items-center gap-2 md:hidden mb-4">
                   <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl flex items-center justify-center shadow-lg">
                     <Dumbbell className="w-6 h-6 text-white" strokeWidth={2.5} />
                   </div>
-                  <span className="font-bold text-lg text-white">KVK Gym</span>
+                  <span className="font-bold text-lg text-gray-900">KVK Gym</span>
                 </div>
-                <h2 className="text-3xl md:text-3xl font-bold text-white mb-2">
+                <h2 className="text-3xl md:text-3xl font-bold text-gray-900 mb-2">
                   Welcome Back
                 </h2>
-                <p className="text-gray-300 font-medium">
+                <p className="text-gray-600 font-medium">
                   Admin Management Portal
                 </p>
               </div>
@@ -127,11 +127,11 @@ export default function Login() {
               <form onSubmit={handleSubmit} className="space-y-4">
                 {/* User ID field */}
                 <div className="space-y-2">
-                  <Label htmlFor="userId" className="text-gray-200 font-semibold text-sm">
+                  <Label htmlFor="userId" className="text-gray-700 font-semibold text-sm">
                     User ID
                   </Label>
                   <div className="relative group">
-                    <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500 group-focus-within:text-blue-400 transition-colors" />
+                    <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 group-focus-within:text-blue-500 transition-colors" />
                     <Input
                       id="userId"
                       name="userId"
@@ -139,7 +139,7 @@ export default function Login() {
                       placeholder="Enter your user ID"
                       value={formData.userId}
                       onChange={handleChange}
-                      className="pl-10 pr-4 bg-slate-700/30 border border-slate-600/50 rounded-lg focus:bg-slate-700/50 focus:border-blue-400/50 focus:ring-2 focus:ring-blue-400/20 transition-all placeholder:text-gray-500 h-9 text-gray-100"
+                      className="pl-10 pr-4 bg-gray-50 border border-gray-300 rounded-lg focus:bg-white focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all placeholder:text-gray-400 h-9 text-gray-900"
                       required
                     />
                   </div>
@@ -147,11 +147,11 @@ export default function Login() {
 
                 {/* Password field */}
                 <div className="space-y-2">
-                  <Label htmlFor="password" className="text-gray-200 font-semibold text-sm">
+                  <Label htmlFor="password" className="text-gray-700 font-semibold text-sm">
                     Password
                   </Label>
                   <div className="relative group">
-                    <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500 group-focus-within:text-blue-400 transition-colors" />
+                    <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 group-focus-within:text-blue-500 transition-colors" />
                     <Input
                       id="password"
                       name="password"
@@ -159,13 +159,13 @@ export default function Login() {
                       placeholder="Enter your password"
                       value={formData.password}
                       onChange={handleChange}
-                      className="pl-10 pr-10 bg-slate-700/30 border border-slate-600/50 rounded-lg focus:bg-slate-700/50 focus:border-blue-400/50 focus:ring-2 focus:ring-blue-400/20 transition-all placeholder:text-gray-500 h-9 text-gray-100"
+                      className="pl-10 pr-10 bg-gray-50 border border-gray-300 rounded-lg focus:bg-white focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all placeholder:text-gray-400 h-9 text-gray-900"
                       required
                     />
                     <button
                       type="button"
                       onClick={() => setShowPassword(!showPassword)}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-blue-400 transition-colors"
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-blue-500 transition-colors"
                       aria-label={showPassword ? 'Hide password' : 'Show password'}
                     >
                       {showPassword ? (
@@ -181,7 +181,7 @@ export default function Login() {
                 <div className="flex justify-end">
                   <a
                     href="#"
-                    className="text-blue-400 hover:text-blue-300 font-medium text-xs transition-colors">
+                    className="text-blue-600 hover:text-blue-700 font-medium text-xs transition-colors">
                     Forgot password?
                   </a>
                 </div>
@@ -197,10 +197,10 @@ export default function Login() {
               </form>
 
               {/* Footer */}
-              <div className="mt-6 pt-4 border-t border-slate-600/30 text-center">
-                <p className="text-xs text-gray-400">
+              <div className="mt-6 pt-4 border-t border-gray-200 text-center">
+                <p className="text-xs text-gray-600">
                   Don't have access?{' '}
-                  <a href="#" className="text-blue-400 font-semibold hover:text-blue-300 transition-colors">
+                  <a href="#" className="text-blue-600 font-semibold hover:text-blue-700 transition-colors">
                     Contact admin
                   </a>
                 </p>
@@ -208,7 +208,7 @@ export default function Login() {
             </div>
 
             {/* Security info */}
-            <div className="mt-4 flex items-center justify-center gap-2 text-xs text-gray-500">
+            <div className="mt-4 flex items-center justify-center gap-2 text-xs text-gray-600">
               <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
                 <path fillRule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clipRule="evenodd" />
               </svg>
