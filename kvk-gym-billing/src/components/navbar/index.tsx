@@ -80,16 +80,6 @@ export default function Navbar({
             <Search size={20} />
           </button>
 
-          {/* Notifications */}
-          <button className="relative p-2 rounded-full hover:bg-light-gray transition-all duration-200 text-gray-700 group">
-            <Bell size={20} />
-            <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full"></span>
-            <span className="absolute inset-0 rounded-full group-hover:bg-blue-50 opacity-0 group-hover:opacity-100 transition-opacity duration-200"></span>
-          </button>
-
-          {/* Divider */}
-          <div className="hidden sm:block w-px h-6 bg-gray-200"></div>
-
           {/* Profile Avatar & Dropdown */}
           <div className="flex items-center gap-3">
             <div className="hidden sm:block text-right">
@@ -110,20 +100,6 @@ export default function Navbar({
           </button>
         </div>
       </div>
-
-      {/* Mobile Search Bar */}
-      {showSearch && (
-        <div className="md:hidden px-4 pb-4 border-t border-gray-200">
-          <div className="flex items-center bg-light-gray rounded-full px-4 py-2">
-            <Search size={18} className="text-gray-400" />
-            <input
-              type="text"
-              placeholder="Search..."
-              className="ml-2 bg-transparent outline-none text-sm w-full placeholder-gray-500"
-            />
-          </div>
-        </div>
-      )}
     </nav>
   );
 }

@@ -46,7 +46,7 @@ export default function Login() {
       {/* Main container */}
       <div className="relative z-10 h-screen w-screen flex overflow-hidden">
         {/* Left side - Branding section (hidden on mobile) */}
-        <div className="hidden md:flex md:w-1/2 flex-col justify-center items-start px-12 lg:px-20 overflow-hidden">
+        <div className="hidden md:flex md:w-2/5 flex-col justify-center items-start px-12 lg:px-20 overflow-hidden">
           <div className="max-w-md animate-fade-in max-h-screen overflow-y-auto pr-2">
             {/* Logo and title */}
             <div className="mb-12 flex items-center gap-4">
@@ -112,7 +112,7 @@ export default function Login() {
         </div>
 
         {/* Right side - Login form */}
-        <div className="w-full md:w-1/2 flex flex-col justify-center items-center px-4 py-0 md:px-12 lg:px-20 overflow-hidden bg-gradient-to-br from-gray-50 to-gray-100">
+        <div className="w-full md:w-3/5 flex flex-col justify-center items-center px-4 py-0 md:px-12 lg:px-20 overflow-hidden bg-gradient-to-br from-gray-50 to-gray-100">
           <div className="w-full max-w-md animate-slide-up overflow-y-auto max-h-screen md:max-h-none">
             {/* White card */}
             <div className="bg-white border border-gray-200 rounded-3xl shadow-md p-8 md:p-10 transition-all duration-500 hover:shadow-l hover:border-gray-300 backdrop-blur-sm">

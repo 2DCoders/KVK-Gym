@@ -18,12 +18,26 @@ interface SidebarProps {
   onClose?: () => void;
 }
 
+interface NavSubitem {
+  id: string;
+  label: string;
+  path: string;
+}
+
+interface NavItem {
+  id: string;
+  label: string;
+  icon: React.ComponentType<{ size?: number; className?: string }>;
+  path: string;
+  submenu: NavSubitem[] | null;
+}
+
 export default function Sidebar({ isOpen, isMobile, onClose }: SidebarProps) {
   const location = useLocation();
   const navigate = useNavigate();
   const [expanded, setExpanded] = useState<string | null>(null);
 
-  const navItems = [
+  const navItems: NavItem[] = [
     {
       id: 'dashboard',
       label: 'Dashboard',
@@ -99,18 +113,6 @@ export default function Sidebar({ isOpen, isMobile, onClose }: SidebarProps) {
         } overflow-y-auto scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-transparent`}
       >
         <div className="flex flex-col h-full">
-          {/* Logo Section */}
-          <div className="p-6 border-b border-gray-100">
-            <div className="flex items-center gap-3 mb-2">
-              <div className="w-10 h-10 bg-gradient-to-br from-primary to-blue-600 rounded-xl flex items-center justify-center shadow-lg shadow-blue-200">
-                <span className="text-white font-bold text-lg">KVK</span>
-              </div>
-              <div>
-                <h2 className="font-bold text-lg text-gray-900">KVK Gym</h2>
-                <p className="text-xs text-gray-500">Premium Management</p>
-              </div>
-            </div>
-          </div>
 
           {/* Profile Card */}
           <div className="mx-4 mt-6 mb-6 p-4 bg-gradient-to-br from-blue-50 to-blue-100/50 rounded-2xl border border-blue-200/50 shadow-md">
