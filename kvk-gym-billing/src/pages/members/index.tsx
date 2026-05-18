@@ -3,18 +3,30 @@ import { Plus, Search, MoreVertical } from 'lucide-react';
 
 export default function Members() {
   const members = [
-    { id: 1, name: 'Janidu Samarakoon', pid: 'GYM-MEM-20260001', age: '36 yrs', gender: 'Male', phone: '+94783445678', nic: '923314172V' },
-    { id: 2, name: 'Mahanama N/A', pid: 'GYM-MEM-20260002', age: '0 yrs', gender: 'Male', phone: '+94714589632', nic: '—' },
-    { id: 3, name: 'Doe N/A', pid: 'GYM-MEM-20260003', age: '3 yrs', gender: 'Male', phone: '+94716523546', nic: '923314175V' },
+    { id: 1, name: 'Janidu Samarakoon', pid: 'GYM-MEM-20260001', age: '36 yrs', gender: 'Male', phone: '+94783445678', nic: '923314172V', status: 'approved' },
+    { id: 2, name: 'Mahanama N/A', pid: 'GYM-MEM-20260002', age: '0 yrs', gender: 'Male', phone: '+94714589632', nic: '—', status: 'pending' },
+    { id: 3, name: 'Doe N/A', pid: 'GYM-MEM-20260003', age: '3 yrs', gender: 'Male', phone: '+94716523546', nic: '923314175V', status: 'blocked' },
+    { id: 4, name: 'Kavindu Perera', pid: 'GYM-MEM-20260004', age: '28 yrs', gender: 'Male', phone: '+94771234567', nic: '934556789V', status: 'approved' },
+    { id: 5, name: 'Nimali Fernando', pid: 'GYM-MEM-20260005', age: '32 yrs', gender: 'Female', phone: '+94772333444', nic: '912345678V', status: 'pending' },
+    { id: 6, name: 'Samantha Dias', pid: 'GYM-MEM-20260006', age: '41 yrs', gender: 'Male', phone: '+94778889900', nic: '881234567V', status: 'approved' },
   ];
+
+  const [activeTab, setActiveTab] = useState<'approved' | 'pending' | 'blocked'>('approved');
 
   // pagination state
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
-  const total = members.length;
+  const filteredMembers = members.filter((member) => member.status === activeTab);
+  const total = filteredMembers.length;
   const totalPages = Math.max(1, Math.ceil(total / pageSize));
   const start = (page - 1) * pageSize;
-  const pageItems = members.slice(start, start + pageSize);
+  const pageItems = filteredMembers.slice(start, start + pageSize);
+
+  const tabs = [
+    { key: 'approved', label: 'Approved Members' },
+    { key: 'pending', label: 'Pending Members' },
+    { key: 'blocked', label: 'Blocked Members' },
+  ] as const;
 
   return (
     <div className="max-w-7xl mx-auto px-4 py-6">
@@ -40,9 +52,29 @@ export default function Members() {
         </div>
 
         <div className="bg-white rounded-lg border border-gray-200 shadow-sm overflow-hidden">
-          <div className="px-4 py-2 border-b border-gray-100 flex items-center justify-between">
-            <div className="flex items-center gap-3 py-0.5">
-              <div className="text-sm font-medium text-gray-900 flex items-center gap-2">All Members <span className="inline-flex items-center justify-center bg-gray-100 text-gray-700 text-xs px-2 py-1 rounded-full">{total}</span></div>
+          <div className="px-4 py-2 border-b border-gray-100 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+            <div className="flex flex-wrap items-center gap-2">
+              {tabs.map((tab) => {
+                const isActive = activeTab === tab.key;
+                const tabCount = members.filter((member) => member.status === tab.key).length;
+
+                return (
+                  <button
+                    key={tab.key}
+                    onClick={() => { setActiveTab(tab.key); setPage(1); }}
+                    className={`inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-sm font-medium transition ${isActive ? 'bg-gray-900 text-white shadow-sm' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`}
+                  >
+                    {tab.label}
+                    <span className={`inline-flex min-w-6 items-center justify-center rounded-full px-2 py-0.5 text-xs ${isActive ? 'bg-white/15 text-white' : 'bg-white text-gray-600'}`}>
+                      {tabCount}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+
+            <div className="text-sm text-gray-600">
+              {tabs.find((tab) => tab.key === activeTab)?.label}
             </div>
           </div>
 
@@ -87,10 +119,8 @@ export default function Members() {
 
           {/* Pagination */}
           <div className="px-4 py-3 border-t border-gray-100 bg-white flex items-center justify-between">
-            <div className="text-sm text-gray-600">Showing {start + 1} to {Math.min(start + pageSize, total)} of {total} entries</div>
+            <div className="text-sm text-gray-600">Showing {total === 0 ? 0 : start + 1} to {Math.min(start + pageSize, total)} of {total} entries</div>
             <div className="flex items-center gap-2">
-              
-
             <div className="flex items-center gap-3">
               <label className="text-sm text-gray-600">Rows:</label>
               <select value={pageSize} onChange={(e) => { setPageSize(Number(e.target.value)); setPage(1); }} className="border rounded-md px-2 py-1 text-sm">
