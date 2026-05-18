@@ -59,7 +59,7 @@ export default function Sidebar({ isOpen, isMobile, onClose }: SidebarProps) {
     },
     {
       id: 'dayend',
-      label: 'Day End',
+      label: 'Day end',
       icon: CheckSquare,
       path: '/dayend',
       submenu: null,

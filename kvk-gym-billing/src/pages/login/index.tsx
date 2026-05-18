@@ -25,7 +25,7 @@ export default function Login() {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
     console.log('Login submitted:', formData)
-    navigate('/dashboard')
+    navigate('/members')
   }
 
   return (
