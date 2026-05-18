@@ -203,24 +203,26 @@ export default function Members() {
             </div>
 
             <div className="border-b border-gray-200 px-5 py-4 sm:px-6">
-              <div className="grid grid-cols-2 gap-3 md:grid-cols-2 md:gap-4">
-                {[
-                  { step: 1, label: 'Personal' },
-                  { step: 2, label: 'Fingerprint' },
-                ].map((item, index) => {
-                  const isActive = memberStep >= item.step;
-                  return (
-                    <div key={item.step} className="flex items-center gap-3">
-                      <div className="flex flex-col items-center gap-2 text-center">
-                        <div className={`flex h-10 w-10 items-center justify-center rounded-full border text-sm font-semibold ${isActive ? 'border-blue-500 bg-blue-50 text-blue-600' : 'border-gray-200 bg-white text-gray-400'}`}>
-                          {item.step}
-                        </div>
-                        <span className={`text-xs font-medium sm:text-sm ${isActive ? 'text-blue-600' : 'text-gray-500'}`}>{item.label}</span>
-                      </div>
-                      {index === 0 && <div className="hidden h-px flex-1 bg-gray-200 md:block" />}
+              <div className="mx-auto grid w-full max-w-xl grid-cols-[1fr_auto_1fr] items-center">
+                <div className="flex items-center justify-end pr-4 sm:pr-6">
+                  <div className="flex flex-col items-center gap-2 text-center shrink-0">
+                    <div className={`flex h-10 w-10 items-center justify-center rounded-full border text-sm font-semibold ${memberStep >= 1 ? 'border-blue-500 bg-blue-50 text-blue-600' : 'border-gray-200 bg-white text-gray-400'}`}>
+                      1
                     </div>
-                  );
-                })}
+                    <span className={`text-xs font-medium sm:text-sm ${memberStep >= 1 ? 'text-blue-600' : 'text-gray-500'}`}>Personal</span>
+                  </div>
+                </div>
+
+                <div className="h-px w-24 bg-gray-200 sm:w-32 md:w-40" />
+
+                <div className="flex items-center justify-start pl-4 sm:pl-6">
+                  <div className="flex flex-col items-center gap-2 text-center shrink-0">
+                    <div className={`flex h-10 w-10 items-center justify-center rounded-full border text-sm font-semibold ${memberStep >= 2 ? 'border-blue-500 bg-blue-50 text-blue-600' : 'border-gray-200 bg-white text-gray-400'}`}>
+                      2
+                    </div>
+                    <span className={`text-xs font-medium sm:text-sm ${memberStep >= 2 ? 'text-blue-600' : 'text-gray-500'}`}>Fingerprint</span>
+                  </div>
+                </div>
               </div>
             </div>
 
@@ -363,7 +365,7 @@ export default function Members() {
                     </div>
                   </div>
 
-                  <div className="flex items-center justify-between border-t border-gray-200 pt-4">
+                  <div className="flex items-center justify-between border-t border-gray-200 pt-4 mb-5.5">
                     <button onClick={goBackStep} className="inline-flex items-center gap-2 rounded-lg border border-gray-200 px-4 py-2.5 text-sm font-medium text-gray-700 transition hover:bg-gray-50">
                       <ArrowLeft size={16} />
                       Back
