@@ -173,7 +173,7 @@ export default function Sidebar({ isOpen, isMobile, onClose }: SidebarProps) {
           {/* Footer */}
           <div className="mt-auto px-4 pb-4 pt-3 border-t border-gray-100 space-y-3">
             <div className="flex items-center gap-2 text-xs text-emerald-600">
-              <span className="h-2 w-2 rounded-full bg-emerald-500"></span>
+              {!collapsed && <span className="h-2 w-2 rounded-full bg-emerald-500"></span>}
               {!collapsed && <span>System online</span>}
             </div>
 
@@ -189,10 +189,11 @@ export default function Sidebar({ isOpen, isMobile, onClose }: SidebarProps) {
               </div>
             )}
 
-            <button className={`${collapsed ? 'w-10 h-10 rounded-full mx-auto' : 'w-full rounded-xl px-4 py-3'} cursor-pointer flex items-center justify-center gap-2 text-red-600 bg-red-50 hover:bg-red-100 transition-all duration-200 font-medium text-sm group`}>
-              <LogOut size={18} className="group-hover:scale-110 transition-transform" />
-              {!collapsed && <span>Logout</span>}
-            </button>
+            {collapsed && (
+              <div className="w-8 h-8 rounded-full bg-blue-100 text-blue-700 flex items-center justify-center text-xs font-semibold">
+                  KD
+                </div>
+            )}
           </div>
         </div>
       </aside>

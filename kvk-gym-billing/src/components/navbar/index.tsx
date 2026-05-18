@@ -1,18 +1,20 @@
-import { Menu, X, Search, Bell, Settings2, MessageSquare } from 'lucide-react';
+import { Menu, X, Bell, Settings2, MessageSquare } from 'lucide-react';
 
 interface NavbarProps {
+  sidebarOpen: boolean;
   onSidebarToggle: () => void;
   onMobileDrawerToggle: () => void;
   mobileDrawerOpen: boolean;
 }
 
 export default function Navbar({
+  sidebarOpen,
   onSidebarToggle,
   onMobileDrawerToggle,
   mobileDrawerOpen,
 }: NavbarProps) {
   return (
-    <nav className="fixed top-0 left-0 right-0 z-40 h-16 border-b border-gray-200/80 bg-white/95 backdrop-blur-md shadow-[0_1px_0_rgba(15,23,42,0.04)]">
+    <nav className={`fixed top-0 right-0 z-40 h-16 border-b border-gray-200/80 bg-white/95 backdrop-blur-md shadow-[0_1px_0_rgba(15,23,42,0.04)] transition-all duration-300 ${sidebarOpen ? 'lg:left-72' : 'lg:left-20'} left-0`}>
       <div className="h-full px-4 md:px-6 flex items-center gap-4">
         <div className="flex items-center gap-3 shrink-0">
           <button

@@ -21,6 +21,7 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
 
       {/* Top Navbar */}
       <Navbar
+        sidebarOpen={sidebarOpen}
         onSidebarToggle={() => setSidebarOpen(!sidebarOpen)}
         onMobileDrawerToggle={() => setMobileDrawerOpen(!mobileDrawerOpen)}
         mobileDrawerOpen={mobileDrawerOpen}
@@ -28,7 +29,7 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
 
       <div className="flex relative z-10">
         {/* Sidebar - Desktop */}
-        <div className={`hidden lg:block ${sidebarOpen ? 'w-72' : 'w-20'} fixed left-0 top-20 h-[calc(100vh-80px)]`}>
+        <div className={`hidden lg:block ${sidebarOpen ? 'w-72' : 'w-20'} fixed left-0 top-0 h-screen`}>
           <Sidebar isOpen={sidebarOpen} isMobile={false} />
         </div>
 
@@ -47,7 +48,7 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
 
         {/* Main Content Area */}
         <main className={`flex-1 w-full ${sidebarOpen ? 'lg:ml-72' : 'lg:ml-20'} transition-all duration-300 ease-in-out`}>
-          <div className="pt-24 px-4 md:px-8 pb-8">
+          <div className="pt-20 px-4 md:px-8 pb-8">
             {children}
           </div>
         </main>
