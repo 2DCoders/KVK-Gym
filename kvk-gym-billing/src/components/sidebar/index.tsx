@@ -115,18 +115,18 @@ export default function Sidebar({ isOpen, isMobile, onClose }: SidebarProps) {
         <div className="flex flex-col h-full">
 
           {/* Profile Card */}
-          <div className="mx-4 mt-6 mb-6 p-4 bg-gradient-to-br from-blue-50 to-blue-100/50 rounded-2xl border border-blue-200/50 shadow-md">
+          <div className="card-premium mx-4 mt-6 mb-6 p-4">
             <div className="flex items-center gap-3 mb-3">
               <div className="w-12 h-12 rounded-full bg-gradient-to-br from-primary to-blue-600 flex items-center justify-center text-white font-bold text-sm shadow-lg">
                 AU
               </div>
               <div className="flex-1 min-w-0">
-                <p className="font-semibold text-gray-900 text-sm truncate">Admin User</p>
-                <p className="text-xs text-gray-600">Gym Manager</p>
+                <p className="font-semibold text-card-foreground text-sm truncate">Admin User</p>
+                <p className="text-ui-sm text-gray-500">Gym Manager</p>
               </div>
             </div>
-            <div className="pt-3 border-t border-blue-200/50">
-              <p className="text-xs text-gray-600">
+            <div className="pt-3 border-t border-gray-100">
+              <p className="text-ui-sm text-gray-500">
                 <span className="font-semibold text-primary">Active Members:</span> 234
               </p>
             </div>
@@ -142,15 +142,15 @@ export default function Sidebar({ isOpen, isMobile, onClose }: SidebarProps) {
                 <div key={item.id}>
                   <button
                     onClick={() => handleNavigation(item.path)}
-                    className={`w-full flex items-center justify-between px-4 py-3 rounded-xl transition-all duration-200 ${
+                    className={`w-full flex items-center justify-between px-4 py-3 rounded-lg transition-all duration-200 ${
                       active
-                        ? 'bg-gradient-to-r from-primary/10 to-blue-50 text-primary border-l-4 border-primary shadow-md shadow-blue-200/30'
-                        : 'text-gray-700 hover:bg-light-gray'
+                        ? 'bg-primary/5 text-primary border-l-4 border-primary shadow-sm'
+                        : 'text-gray-700 hover:bg-gray-50'
                     }`}
                   >
                     <div className="flex items-center gap-3">
-                      <Icon size={20} />
-                      <span className="font-medium text-sm">{item.label}</span>
+                      <Icon size={20} className={`${active ? 'text-primary' : 'text-gray-400'}`} />
+                      <span className="font-medium text-ui-sm">{item.label}</span>
                     </div>
                     {item.submenu && (
                       <ChevronDown

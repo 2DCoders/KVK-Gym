@@ -8,11 +8,27 @@ export default {
     extend: {
       colors: {
         primary: '#296BE1',
+        secondary: '#0F172A',
+        accent: '#7C3AED',
+        muted: '#6B7280',
+        background: '#F8FAFC',
         'off-white': '#F8F9FA',
         'light-gray': '#F0F2F5',
+        card: '#FFFFFF',
+        'card-foreground': '#0B1220',
+        input: '#E6EDF8',
       },
       fontFamily: {
         sans: ['Plus Jakarta Sans', 'system-ui', 'sans-serif'],
+      },
+      fontSize: {
+        xs: ['0.75rem', { lineHeight: '1rem' }],
+        sm: ['0.875rem', { lineHeight: '1.25rem' }],
+        base: ['1rem', { lineHeight: '1.5rem' }],
+        lg: ['1.125rem', { lineHeight: '1.75rem' }],
+        xl: ['1.25rem', { lineHeight: '1.75rem' }],
+        '2xl': ['1.5rem', { lineHeight: '2rem' }],
+        '3xl': ['1.875rem', { lineHeight: '2.25rem' }],
       },
       borderRadius: {
         '3xl': '1.875rem',
