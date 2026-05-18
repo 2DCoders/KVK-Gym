@@ -115,7 +115,7 @@ export default function Members() {
                   <button
                     key={tab.key}
                     onClick={() => { setActiveTab(tab.key); setPage(1); }}
-                    className={`inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-sm font-medium transition ${isActive ? 'bg-gray-900 text-white shadow-sm' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`}
+                    className={`inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-sm font-medium transition cursor-pointer ${isActive ? 'bg-gray-900 text-white shadow-sm' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`}
                   >
                     {tab.label}
                     <span className={`inline-flex min-w-6 items-center justify-center rounded-full px-2 py-0.5 text-xs ${isActive ? 'bg-white/15 text-white' : 'bg-white text-gray-600'}`}>

@@ -34,13 +34,13 @@ export default function Navbar({
         </div>
 
         <div className="flex items-center gap-2 sm:gap-3 ml-auto shrink-0">
-          <button className="hidden sm:flex items-center justify-center w-10 h-10 rounded-full text-gray-500 hover:bg-gray-100 hover:text-gray-700 transition-colors" aria-label="Settings">
+          <button className="hidden cursor-pointer sm:flex items-center justify-center w-10 h-10 rounded-full text-gray-500 hover:bg-gray-100 hover:text-gray-700 transition-colors" aria-label="Settings">
             <Settings size={18} />
           </button>
-          <button className="hidden sm:flex items-center justify-center w-10 h-10 rounded-full text-gray-500 hover:bg-gray-100 hover:text-gray-700 transition-colors" aria-label="Full screen">
+          <button className="hidden cursor-pointer sm:flex items-center justify-center w-10 h-10 rounded-full text-gray-500 hover:bg-gray-100 hover:text-gray-700 transition-colors" aria-label="Full screen">
             <Maximize2 size={18} />
           </button>
-          <button className="w-10 h-10 rounded-full bg-blue-100 text-blue-700 flex items-center justify-center text-xs font-semibold shadow-sm">
+          <button className="w-10 h-10 cursor-pointer rounded-full bg-blue-100 text-blue-700 flex items-center justify-center text-xs font-semibold shadow-sm">
             DS
           </button>
         </div>
