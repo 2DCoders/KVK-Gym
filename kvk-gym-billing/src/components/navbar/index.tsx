@@ -1,4 +1,4 @@
-import { Menu, X, Bell, Settings2, MessageSquare } from 'lucide-react';
+import { Menu, X, Maximize2, Settings } from 'lucide-react';
 
 interface NavbarProps {
   sidebarOpen: boolean;
@@ -35,16 +35,13 @@ export default function Navbar({
 
         <div className="flex items-center gap-2 sm:gap-3 ml-auto shrink-0">
           <button className="hidden sm:flex items-center justify-center w-10 h-10 rounded-full text-gray-500 hover:bg-gray-100 hover:text-gray-700 transition-colors" aria-label="Settings">
-            <Settings2 size={18} />
+            <Settings size={18} />
           </button>
-          <button className="flex items-center justify-center w-10 h-10 rounded-full text-gray-500 hover:bg-gray-100 hover:text-gray-700 transition-colors" aria-label="Notifications">
-            <Bell size={18} />
-          </button>
-          <button className="hidden sm:flex items-center justify-center w-10 h-10 rounded-full text-gray-500 hover:bg-gray-100 hover:text-gray-700 transition-colors" aria-label="Messages">
-            <MessageSquare size={18} />
+          <button className="hidden sm:flex items-center justify-center w-10 h-10 rounded-full text-gray-500 hover:bg-gray-100 hover:text-gray-700 transition-colors" aria-label="Full screen">
+            <Maximize2 size={18} />
           </button>
           <button className="w-10 h-10 rounded-full bg-blue-100 text-blue-700 flex items-center justify-center text-xs font-semibold shadow-sm">
-            KD
+            DS
           </button>
         </div>
       </div>

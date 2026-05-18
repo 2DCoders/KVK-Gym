@@ -113,12 +113,12 @@ export default function Sidebar({ isOpen, isMobile, onClose }: SidebarProps) {
           <div className="px-4 pt-4 pb-3 border-b border-gray-100">
             <div className="flex items-center gap-3">
               <div className="w-9 h-9 rounded-lg bg-blue-600 text-white flex items-center justify-center shadow-sm">
-                <span className="text-sm font-bold">KV</span>
+                <span className="text-xs font-bold">KVK</span>
               </div>
               {!collapsed && (
                 <div className="min-w-0">
-                  <p className="text-sm font-semibold text-gray-900 truncate">Mawanella Medical Center</p>
-                  <p className="text-xs text-gray-500">Medical Center</p>
+                  <p className="text-sm font-semibold text-gray-900 truncate">KVK Gym Management</p>
+                  <p className="text-xs text-gray-500">Cashier Panel</p>
                 </div>
               )}
             </div>
@@ -180,18 +180,18 @@ export default function Sidebar({ isOpen, isMobile, onClose }: SidebarProps) {
             {!collapsed && (
               <div className="flex items-center gap-3 rounded-2xl border border-gray-200 bg-gray-50 px-3 py-3 shadow-sm">
                 <div className="w-8 h-8 rounded-full bg-blue-100 text-blue-700 flex items-center justify-center text-xs font-semibold">
-                  KD
+                  DS
                 </div>
                 <div className="min-w-0 flex-1">
-                  <p className="text-sm font-semibold text-gray-900 truncate">Kamal Darmawansha</p>
-                  <p className="text-xs text-gray-500">Clinic Owner</p>
+                  <p className="text-sm font-semibold text-gray-900 truncate">Dasun Shyaminda</p>
+                  <p className="text-xs text-gray-500">Gym Cashier</p>
                 </div>
               </div>
             )}
 
             {collapsed && (
               <div className="w-8 h-8 rounded-full bg-blue-100 text-blue-700 flex items-center justify-center text-xs font-semibold">
-                  KD
+                  DS
                 </div>
             )}
           </div>
