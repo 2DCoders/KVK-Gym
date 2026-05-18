@@ -115,27 +115,17 @@ export default function Sidebar({ isOpen, isMobile, onClose }: SidebarProps) {
 
           {/* Profile Card */}
           {!collapsed && (<div className={`card-premium mx-4 mt-6 mb-6 p-4 ${collapsed ? 'items-center p-3' : ''}`}>
-            <div className={`flex items-center gap-3 mb-3 ${collapsed ? 'justify-center' : ''}`}>
+            <div className={`flex items-center gap-3  ${collapsed ? 'justify-center' : ''}`}>
 
 
-              <><div className="w-12 h-12 rounded-full bg-gradient-to-br from-primary to-blue-600 flex items-center justify-center text-white font-bold text-sm shadow-lg">
+              <div className="w-12 h-12 rounded-full bg-gradient-to-br from-primary to-blue-600 flex items-center justify-center text-white font-bold text-sm shadow-lg">
                 AU
               </div>
-                <div className="flex-1 min-w-0">
-                  <p className="font-semibold text-card-foreground text-sm truncate">Admin User</p>
-                  <p className="text-ui-sm text-gray-500">Gym Manager</p>
-                </div>
-
-              </>
-            </div>
-
-            {!collapsed && (
-              <div className="pt-3 border-t border-gray-100">
-                <p className="text-ui-sm text-gray-500">
-                  <span className="font-semibold text-primary">Active Members:</span> 234
-                </p>
+              <div className="flex-1 min-w-0">
+                <p className="font-semibold text-card-foreground text-sm truncate">Admin User</p>
+                <p className="text-ui-sm text-gray-500">Gym Manager</p>
               </div>
-            )}
+            </div>
           </div>
           )}
 
@@ -178,12 +168,12 @@ export default function Sidebar({ isOpen, isMobile, onClose }: SidebarProps) {
 
                   {/* Submenu */}
                   {item.submenu && expanded === item.id && (
-                    <div className="ml-4 mt-1 space-y-1 animate-slide-up">
+                    <div className="ml-2 space-y-1 animate-slide-up">
                       {item.submenu.map((subitem) => (
                         <button
                           key={subitem.id}
                           onClick={() => handleNavigation(subitem.path)}
-                          className={`w-full text-left px-4 py-2 text-sm rounded-lg transition-all duration-200 ${isActive(subitem.path)
+                          className={`w-full text-left px-4 py-1 text-sm rounded-lg transition-all duration-200 ${isActive(subitem.path)
                             ? 'bg-primary/10 text-primary font-medium'
                             : 'text-gray-600 hover:bg-light-gray'
                             }`}
@@ -206,12 +196,12 @@ export default function Sidebar({ isOpen, isMobile, onClose }: SidebarProps) {
           {/* Logout Button - stick to bottom */}
           <div className="mt-auto p-4 border-t border-gray-100 flex justify-center">
             {!collapsed ? (
-              <button className="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-xl text-red-600 bg-red-50 hover:bg-red-100 transition-all duration-200 font-medium text-sm group">
+              <button className="w-full cursor-pointer flex items-center justify-center gap-2 px-4 py-3 rounded-xl text-red-600 bg-red-50 hover:bg-red-100 transition-all duration-200 font-medium text-sm group">
                 <LogOut size={18} className="group-hover:scale-110 transition-transform" />
                 <span>Logout</span>
               </button>
             ) : (
-              <button aria-label="Logout" className="w-10 h-10 rounded-full text-red-600 bg-red-50 hover:bg-red-100 flex items-center justify-center transition-all duration-150">
+              <button aria-label="Logout" className="w-10 cursor-pointer h-10 rounded-full text-red-600 bg-red-50 hover:bg-red-100 flex items-center justify-center transition-all duration-150">
                 <LogOut size={16} />
               </button>
             )}

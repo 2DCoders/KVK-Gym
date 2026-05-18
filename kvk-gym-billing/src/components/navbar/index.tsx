@@ -41,7 +41,7 @@ export default function Navbar({
           {/* Desktop Sidebar Toggle */}
           <button
             onClick={onSidebarToggle}
-            className="hidden lg:flex items-center justify-center w-10 h-10 rounded-full hover:bg-light-gray transition-all duration-200 text-gray-700"
+            className="hidden lg:flex items-center justify-center w-10 h-10 rounded-full hover:bg-light-gray transition-all duration-200 text-gray-700 cursor-pointer"
             aria-label="Toggle sidebar"
           >
             <Menu size={20} />
@@ -56,15 +56,8 @@ export default function Navbar({
             {mobileDrawerOpen ? <X size={20} /> : <Menu size={20} />}
           </button>
 
-          {/* KVK Gym Logo - Mobile */}
-          <div className="lg:hidden flex items-center gap-2">
-            <div className="w-8 h-8 bg-gradient-to-br from-blue-600 to-blue-400 rounded-lg flex items-center justify-center">
-              <span className="text-white font-bold text-sm">KVK</span>
-            </div>
-          </div>
-
           {/* Page Title */}
-          <h1 className="text-xl md:text-2xl font-bold text-gray-900 hidden sm:block">
+          <h1 className="text-xl md:text-xl font-bold text-gray-900 hidden sm:block">
             {pageTitle}
           </h1>
         </div>
@@ -94,7 +87,7 @@ export default function Navbar({
           {/* Logout - Desktop */}
           <button
             title="Logout"
-            className="hidden sm:flex items-center justify-center w-10 h-10 rounded-full hover:bg-red-50 transition-all duration-200 text-gray-700 hover:text-red-600"
+            className="hidden sm:flex items-center justify-center w-10 h-10 rounded-full hover:bg-red-50 transition-all cursor-pointer duration-200 text-gray-700 hover:text-red-600"
           >
             <LogOut size={18} />
           </button>
