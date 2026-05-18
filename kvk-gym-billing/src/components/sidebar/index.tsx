@@ -7,7 +7,6 @@ import {
   CheckSquare,
   BarChart3,
   Settings,
-  LogOut,
   ChevronDown,
 } from 'lucide-react';
 
@@ -38,13 +37,6 @@ export default function Sidebar({ isOpen, isMobile, onClose }: SidebarProps) {
 
   const navItems: NavItem[] = [
     {
-      id: 'dashboard',
-      label: 'Dashboard',
-      icon: LayoutDashboard,
-      path: '/dashboard',
-      submenu: null,
-    },
-    {
       id: 'members',
       label: 'Members',
       icon: Users,
@@ -66,17 +58,10 @@ export default function Sidebar({ isOpen, isMobile, onClose }: SidebarProps) {
       submenu: null,
     },
     {
-      id: 'attendance',
-      label: 'Attendance',
+      id: 'dayend',
+      label: 'Day End',
       icon: CheckSquare,
-      path: '/attendance',
-      submenu: null,
-    },
-    {
-      id: 'reports',
-      label: 'Reports',
-      icon: BarChart3,
-      path: '/reports',
+      path: '/dayend',
       submenu: null,
     },
     {
@@ -117,7 +102,7 @@ export default function Sidebar({ isOpen, isMobile, onClose }: SidebarProps) {
               </div>
               {!collapsed && (
                 <div className="min-w-0">
-                  <p className="text-sm font-semibold text-gray-900 truncate">KVK Gym Management</p>
+                  <p className="text-sm font-semibold text-gray-900 truncate">KVK Gym System</p>
                   <p className="text-xs text-gray-500">Cashier Panel</p>
                 </div>
               )}
@@ -125,13 +110,13 @@ export default function Sidebar({ isOpen, isMobile, onClose }: SidebarProps) {
           </div>
 
           {/* Navigation */}
-          <nav className="flex-1 px-3 py-3 space-y-1.5">
+          <nav className="flex-1 px-3 py-3 space-y-1">
             {navItems.map((item) => {
               const Icon = item.icon;
               const active = isActive(item.path);
 
-              const btnBase = `w-full flex items-center ${collapsed ? 'justify-center' : 'justify-between'} ${collapsed ? 'px-2' : 'px-3'} py-2 rounded-xl transition-colors duration-150`;
-              const iconWrapper = `${active ? 'bg-blue-50 text-blue-600' : 'text-gray-400'} w-9 h-9 flex items-center justify-center rounded-lg transition`;
+              const btnBase = `w-full flex items-center ${collapsed ? 'justify-center' : 'justify-between'} ${collapsed ? 'px-2' : 'px-3'} py-1.5 rounded-xl transition-colors duration-150`;
+              const iconWrapper = `${active ? 'bg-blue-50 text-blue-600' : 'text-gray-400'} w-8 h-8 flex items-center justify-center rounded-lg transition`;
 
               return (
                 <div key={item.id}>
@@ -141,7 +126,7 @@ export default function Sidebar({ isOpen, isMobile, onClose }: SidebarProps) {
                   >
                     <div className={`flex items-center gap-3 ${collapsed ? 'justify-center' : ''}`}>
                       <span className={iconWrapper}>
-                        <Icon size={18} />
+                        <Icon size={16} />
                       </span>
                       {!collapsed && <span className={`text-sm ${active ? 'text-blue-700 font-semibold' : 'text-gray-700'}`}>{item.label}</span>}
                     </div>
