@@ -1,6 +1,6 @@
 import { createPortal } from 'react-dom';
-import { useState } from 'react';
-import { ArrowLeft, ArrowRight, Fingerprint, MoreVertical, Plus, Search, UserRound, X } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import { ArrowLeft, ArrowRight, Fingerprint, MoreVertical, Plus, Search, UserRound, X, Eye, Edit, Trash2 } from 'lucide-react';
 
 type MemberStatus = 'approved' | 'pending' | 'blocked';
 type MemberForm = {
@@ -41,6 +41,13 @@ export default function Members() {
   // pagination state
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
+  const [openAction, setOpenAction] = useState<{ id: number; top: number; left: number } | null>(null);
+
+  useEffect(() => {
+    const handleDoc = () => setOpenAction(null);
+    if (openAction) document.addEventListener('mousedown', handleDoc);
+    return () => document.removeEventListener('mousedown', handleDoc);
+  }, [openAction]);
   const filteredMembers = members.filter((member) => member.status === activeTab);
   const total = filteredMembers.length;
   const totalPages = Math.max(1, Math.ceil(total / pageSize));
@@ -154,7 +161,34 @@ export default function Members() {
                       <td className="py-2 px-3 align-top text-gray-700">{p.phone}</td>
                       <td className="py-2 px-3 align-top text-gray-700">{p.nic}</td>
                       <td className="py-2 px-3 align-top text-gray-500">
-                        <button className="p-1.5 rounded-full hover:bg-gray-100 transition cursor-pointer"><MoreVertical size={14} /></button>
+                        <div className="relative inline-block">
+                          <button onClick={(e) => {
+                            e.stopPropagation();
+                            const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+                            const menuWidth = 144; // w-36
+                            let left = rect.right - menuWidth;
+                            left = Math.max(8, Math.min(left, window.innerWidth - menuWidth - 8));
+                            const top = rect.bottom + 8;
+                            setOpenAction(openAction && openAction.id === p.id ? null : { id: p.id, top, left });
+                          }} className="p-1.5 rounded-full hover:bg-gray-100 transition cursor-pointer">
+                            <MoreVertical size={14} />
+                          </button>
+                        </div>
+
+                        {openAction && openAction.id === p.id && createPortal(
+                          <div style={{ position: 'fixed', top: openAction.top, left: openAction.left, width: 144 }} onMouseDown={(e) => e.stopPropagation()} className="rounded-md bg-white border shadow-lg z-50">
+                            <button onClick={() => { setOpenAction(null); alert(`View ${p.name}`); }} className="flex items-center gap-2 w-full px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 cursor-pointer">
+                              <Eye size={14} /> View
+                            </button>
+                            <button onClick={() => { setOpenAction(null); alert(`Edit ${p.name}`); }} className="flex items-center gap-2 w-full px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 cursor-pointer">
+                              <Edit size={14} /> Edit
+                            </button>
+                            <button onClick={() => { setOpenAction(null); if (confirm(`Delete ${p.name}?`)) { alert(`${p.name} deleted`); } }} className="flex items-center gap-2 w-full px-3 py-2 text-sm text-red-600 hover:bg-gray-50 cursor-pointer">
+                              <Trash2 size={14} /> Delete
+                            </button>
+                          </div>,
+                          document.body,
+                        )}
                       </td>
                     </tr>
                   ))}
