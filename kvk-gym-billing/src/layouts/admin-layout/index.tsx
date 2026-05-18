@@ -11,7 +11,7 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
   const [mobileDrawerOpen, setMobileDrawerOpen] = useState(false);
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-off-white via-white to-light-gray">
+    <div className="min-h-screen bg-linear-to-br from-off-white via-white to-light-gray">
       {/* Floating gradient circles background */}
       <div className="fixed inset-0 -z-10 overflow-hidden pointer-events-none">
         <div className="absolute -top-40 -right-40 w-80 h-80 bg-blue-100 rounded-full mix-blend-multiply filter blur-3xl opacity-40 animate-float"></div>

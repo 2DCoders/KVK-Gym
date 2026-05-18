@@ -1,6 +1,4 @@
-import { useState } from 'react';
-import { Menu, X, Search, Bell, LogOut } from 'lucide-react';
-import { useLocation } from 'react-router-dom';
+import { Menu, X, Search, Bell, Settings2, MessageSquare } from 'lucide-react';
 
 interface NavbarProps {
   onSidebarToggle: () => void;
@@ -13,83 +11,38 @@ export default function Navbar({
   onMobileDrawerToggle,
   mobileDrawerOpen,
 }: NavbarProps) {
-  const [showSearch, setShowSearch] = useState(false);
-  const [searchValue, setSearchValue] = useState('');
-  const location = useLocation();
-
-  // Get page title from route
-  const getTitleFromPath = (path: string) => {
-    const titles: Record<string, string> = {
-      '/dashboard': 'Dashboard',
-      '/members': 'Members',
-      '/trainers': 'Trainers',
-      '/payments': 'Payments',
-      '/attendance': 'Attendance',
-      '/reports': 'Reports',
-      '/settings': 'Settings',
-    };
-    return titles[path] || 'Dashboard';
-  };
-
-  const pageTitle = getTitleFromPath(location.pathname);
-
   return (
-    <nav className="fixed top-0 left-0 right-0 z-40 bg-white/80 backdrop-blur-md border-b border-blue-100/50 shadow-sm">
-      <div className="h-20 flex items-center justify-between px-4 md:px-8">
-        {/* Left Section - Menu Toggle & Title */}
-        <div className="flex items-center gap-4">
-          {/* Desktop Sidebar Toggle */}
+    <nav className="fixed top-0 left-0 right-0 z-40 h-16 border-b border-gray-200/80 bg-white/95 backdrop-blur-md shadow-[0_1px_0_rgba(15,23,42,0.04)]">
+      <div className="h-full px-4 md:px-6 flex items-center gap-4">
+        <div className="flex items-center gap-3 shrink-0">
           <button
             onClick={onSidebarToggle}
-            className="hidden lg:flex items-center justify-center w-10 h-10 rounded-full hover:bg-light-gray transition-all duration-200 text-gray-700 cursor-pointer"
+            className="hidden lg:flex items-center justify-center w-10 h-10 rounded-full text-gray-700 hover:bg-gray-100 transition-colors"
             aria-label="Toggle sidebar"
           >
             <Menu size={20} />
           </button>
-
-          {/* Mobile Drawer Toggle */}
           <button
             onClick={onMobileDrawerToggle}
-            className="lg:hidden flex items-center justify-center w-10 h-10 rounded-full hover:bg-light-gray transition-all duration-200 text-gray-700"
+            className="lg:hidden flex items-center justify-center w-10 h-10 rounded-full text-gray-700 hover:bg-gray-100 transition-colors"
             aria-label="Toggle mobile menu"
           >
             {mobileDrawerOpen ? <X size={20} /> : <Menu size={20} />}
           </button>
-
-          {/* Page Title */}
-          <h1 className="text-xl md:text-xl font-bold text-gray-900 hidden sm:block">
-            {pageTitle}
-          </h1>
         </div>
 
-        {/* Right Section - Actions */}
-        <div className="flex items-center gap-3 md:gap-4">
-          {/* Mobile Search Toggle */}
-          <button
-            onClick={() => setShowSearch(!showSearch)}
-            className="md:hidden p-2 rounded-full hover:bg-light-gray transition-all duration-200 text-gray-700"
-            aria-label="Search"
-          >
-            <Search size={20} />
+        <div className="flex items-center gap-2 sm:gap-3 ml-auto shrink-0">
+          <button className="hidden sm:flex items-center justify-center w-10 h-10 rounded-full text-gray-500 hover:bg-gray-100 hover:text-gray-700 transition-colors" aria-label="Settings">
+            <Settings2 size={18} />
           </button>
-
-          {/* Profile Avatar & Dropdown */}
-          <div className="flex items-center gap-3">
-            <div className="hidden sm:block text-right">
-              <p className="text-sm font-semibold text-gray-900">Admin User</p>
-              <p className="text-xs text-gray-500">Manager</p>
-            </div>
-            <button className="w-10 h-10 rounded-full bg-gradient-to-br from-primary to-blue-600 flex items-center justify-center text-white font-bold text-sm hover:shadow-lg hover:shadow-blue-200 transition-all duration-200">
-              AU
-            </button>
-          </div>
-
-          {/* Logout - Desktop */}
-          <button
-            title="Logout"
-            className="hidden sm:flex items-center justify-center w-10 h-10 rounded-full hover:bg-red-50 transition-all cursor-pointer duration-200 text-gray-700 hover:text-red-600"
-          >
-            <LogOut size={18} />
+          <button className="flex items-center justify-center w-10 h-10 rounded-full text-gray-500 hover:bg-gray-100 hover:text-gray-700 transition-colors" aria-label="Notifications">
+            <Bell size={18} />
+          </button>
+          <button className="hidden sm:flex items-center justify-center w-10 h-10 rounded-full text-gray-500 hover:bg-gray-100 hover:text-gray-700 transition-colors" aria-label="Messages">
+            <MessageSquare size={18} />
+          </button>
+          <button className="w-10 h-10 rounded-full bg-blue-100 text-blue-700 flex items-center justify-center text-xs font-semibold shadow-sm">
+            KD
           </button>
         </div>
       </div>
