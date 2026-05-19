@@ -34,6 +34,8 @@ export default function Sidebar({ isOpen, isMobile, onClose }: SidebarProps) {
   const location = useLocation();
   const navigate = useNavigate();
   const collapsed = !isOpen && !isMobile;
+  
+  const cashier = localStorage.getItem('cashier') ? JSON.parse(localStorage.getItem('cashier') as string) : null;
 
   const navItems: NavItem[] = [
     {
@@ -165,10 +167,10 @@ export default function Sidebar({ isOpen, isMobile, onClose }: SidebarProps) {
             {!collapsed && (
               <div className="flex items-center gap-3 rounded-2xl border border-gray-200 bg-gray-50 px-3 py-3 shadow-sm">
                 <div className="w-8 h-8 rounded-full bg-blue-100 text-blue-700 flex items-center justify-center text-xs font-semibold">
-                  DS
+                  {cashier?.firstName?.charAt(0)}{cashier?.lastName?.charAt(0)}
                 </div>
                 <div className="min-w-0 flex-1">
-                  <p className="text-sm font-semibold text-gray-900 truncate">Dasun Shyaminda</p>
+                  <p className="text-sm font-semibold text-gray-900 truncate">{cashier?.firstName} {cashier?.lastName}</p>
                   <p className="text-xs text-gray-500">Gym Cashier</p>
                 </div>
               </div>
@@ -176,7 +178,7 @@ export default function Sidebar({ isOpen, isMobile, onClose }: SidebarProps) {
 
             {collapsed && (
               <div className="w-8 h-8 rounded-full bg-blue-100 text-blue-700 flex items-center justify-center text-xs font-semibold">
-                  DS
+                  {cashier?.firstName?.charAt(0)}{cashier?.lastName?.charAt(0)}
                 </div>
             )}
           </div>

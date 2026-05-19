@@ -17,6 +17,8 @@ export default function Navbar({
   const [accountMenuOpen, setAccountMenuOpen] = useState(false);
   const accountMenuRef = useRef<HTMLDivElement | null>(null);
 
+  const cashier = localStorage.getItem('cashier') ? JSON.parse(localStorage.getItem('cashier') as string) : null;
+
   useEffect(() => {
     const handlePointerDown = (event: MouseEvent) => {
       if (accountMenuRef.current && !accountMenuRef.current.contains(event.target as Node)) {
@@ -66,29 +68,29 @@ export default function Navbar({
               aria-expanded={accountMenuOpen}
               aria-haspopup="menu"
             >
-              DS
+              {cashier?.firstName?.charAt(0)}{cashier?.lastName?.charAt(0)}
             </button>
 
             {accountMenuOpen && (
-              <div className="absolute right-0 top-12 z-50 w-72 overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-2xl shadow-gray-900/10">
-                <div className="border-b border-gray-100 px-4 py-4">
-                  <div className="text-base font-medium text-gray-900">Kamal Daramwansha</div>
-                  <div className="mt-1 text-sm text-gray-500">mawanella@gmail.com</div>
+              <div className="absolute right-0 top-11 z-50 w-56 overflow-hidden rounded-xl border border-gray-200 bg-white shadow-xl shadow-gray-900/10">
+                <div className="border-b border-gray-100 px-3 py-3">
+                  <div className="text-sm font-medium text-gray-900">{cashier?.firstName} {cashier?.lastName}</div>
+                  <div className="mt-0.5 text-xs text-gray-500">{cashier?.email}</div>
                 </div>
 
-                <div className="py-2">
+                <div className="py-1.5">
 
                   <button
                     type="button"
-                    className="flex w-full items-center gap-3 px-4 py-3 text-left text-red-500 transition hover:bg-red-50 cursor-pointer"
+                    className="flex w-full items-center gap-2.5 px-3 py-2 text-left text-red-500 transition hover:bg-red-50 cursor-pointer"
                     onClick={() => {
                       setAccountMenuOpen(false)
                       localStorage.removeItem('cashier');
                       window.location.href = '/';
                     }}
                   >
-                    <LogOut size={18} />
-                    <span className="text-sm font-medium">Log out</span>
+                    <LogOut size={16} />
+                    <span className="text-xs font-medium">Log out</span>
                   </button>
                 </div>
               </div>
