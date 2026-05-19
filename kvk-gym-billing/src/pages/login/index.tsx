@@ -13,6 +13,7 @@ export default function Login() {
     password: '',
   })
   const [loading, setLoading] = useState(false)
+  const [pageAlert, setPageAlert] = useState<{ visible: boolean; variant?: 'success' | 'error' | 'warning' | 'info'; title?: string; description?: string }>({ visible: false });
 
   const navigate = useNavigate()
 
@@ -32,7 +33,7 @@ export default function Login() {
       localStorage.setItem('cashier', JSON.stringify(cashier));
       navigate('/members')
     } catch (error) {
-      console.error("Login failed:", error);
+      setPageAlert({ visible: true, variant: 'error', title: 'Login Failed', description: 'Invalid user ID or password.' });
     } finally {
       setLoading(false)
     }
@@ -46,7 +47,7 @@ export default function Login() {
         <div className="absolute -top-40 -right-40 w-96 h-96 bg-blue-500/20 rounded-full blur-3xl animate-morph"></div>
         <div className="absolute -bottom-32 -left-32 w-80 h-80 bg-purple-500/15 rounded-full blur-3xl animate-morph" style={{ animationDelay: '2s' }}></div>
         <div className="absolute top-1/2 left-1/3 w-64 h-64 bg-blue-400/10 rounded-full blur-3xl animate-glow-pulse" style={{ animationDelay: '1s' }}></div>
-        
+
         {/* Floating circles - Left side (visible) */}
         <div className="absolute -top-20 left-10 w-96 h-96 bg-blue-400/15 rounded-full blur-3xl animate-morph" style={{ animationDelay: '1s' }}></div>
         <div className="absolute top-1/4 left-1/4 w-72 h-72 bg-indigo-500/15 rounded-full blur-3xl animate-glow-pulse" style={{ animationDelay: '2.5s' }}></div>
@@ -123,6 +124,38 @@ export default function Login() {
 
         {/* Right side - Login form */}
         <div className="w-full md:w-3/5 flex flex-col justify-center items-center px-4 py-0 md:px-12 lg:px-20 overflow-hidden bg-gradient-to-br from-gray-50 to-gray-100">
+          {pageAlert.visible && (
+            <div className="w-full max-w-3xl mb-6 animate-slide-down">
+              <div className={`rounded-xl border ${pageAlert.variant === 'error' ? 'bg-red-50 border-red-100' : 'bg-green-50 border-green-100'} p-4`}>
+                <div className="flex items-start gap-3">
+                  <div className="shrink-0 flex items-center justify-center">
+                    {pageAlert.variant === 'error' ? (
+                      <svg className="w-5 h-5 text-red-600" fill="currentColor" viewBox="0 0 20 20">
+                        <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm-1.707-4.707a1 1 0 011.414-1.414L10.707 10l1.707-1.707a1 1 0 011.414 1.414L12.414 11l1.707 1.707a1 1 0 01-1.414 1.414L11.707 12l-1.707 1.707z" clipRule="evenodd" />
+                      </svg>
+                    ) : (
+                      <svg className="w-5 h-5 text-green-600" fill="currentColor" viewBox="0 0 20 20">
+                        <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.707a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                      </svg>
+                    )}
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    {pageAlert.title && <div className="text-sm font-semibold text-gray-900">{pageAlert.title}</div>}
+                    {pageAlert.description && <div className="mt-1 text-sm text-gray-600">{pageAlert.description}</div>}
+                  </div>
+                  <button
+                    onClick={() => setPageAlert(prev => ({ ...prev, visible: false }))}
+                    aria-label="Close alert"
+                    className="ml-2 rounded-lg p-2 text-gray-500 hover:bg-white/30 hover:text-gray-700 transition-colors"
+                  >
+                    <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                      <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707z" clipRule="evenodd" />
+                    </svg>
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
           <div className="w-full max-w-md animate-slide-up overflow-y-auto max-h-screen md:max-h-none">
             {/* White card */}
             <div className="bg-white border border-gray-200 rounded-3xl shadow-md p-8 md:p-10 transition-all duration-500 hover:shadow-l hover:border-gray-300 backdrop-blur-sm">

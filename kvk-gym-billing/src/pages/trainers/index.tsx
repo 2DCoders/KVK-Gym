@@ -1,6 +1,7 @@
 import { createPortal } from 'react-dom';
 import { useEffect, useState } from 'react';
 import { ArrowLeft, ArrowRight, MoreVertical, Plus, Search, X, Eye, Edit, Trash2, Dumbbell, Fingerprint } from 'lucide-react';
+import Alert from '@/components/ui/alert'
 
 type TrainerStatus = 'approved' | 'pending' | 'blocked';
 type TrainerForm = {
@@ -23,6 +24,7 @@ export default function Trainers() {
   const [isNewTrainerOpen, setIsNewTrainerOpen] = useState(false);
   const [trainerStep, setTrainerStep] = useState(1);
   const [form, setForm] = useState<TrainerForm>({ firstName: '', lastName: '', phone: '', email: '', specialty: '' });
+  const [pageAlert, setPageAlert] = useState<{ visible: boolean; variant?: 'success' | 'error' | 'warning' | 'info'; title?: string; description?: string }>({ visible: false });
 
   // pagination / actions
   const [page, setPage] = useState(1);
@@ -58,11 +60,18 @@ export default function Trainers() {
   const handleFinalSubmit = () => {
     // placeholder - in real app submit to API
     closeNewTrainerModal();
+    setPageAlert({ visible: true, variant: 'success', title: 'Trainer added', description: 'Trainer registered successfully.' });
+    setTimeout(() => setPageAlert((s) => ({ ...s, visible: false })), 4000);
   };
 
   return (
     <div className="max-w-7xl mx-auto px-4 py-6">
       <div className="space-y-4">
+        {pageAlert.visible && (
+          <div>
+            <Alert variant={pageAlert.variant as any} title={pageAlert.title} description={pageAlert.description} onClose={() => setPageAlert((s) => ({ ...s, visible: false }))} />
+          </div>
+        )}
         <div className="flex items-start justify-between gap-4">
           <div>
             <h1 className="text-xl md:text-2xl font-semibold text-gray-900">Trainer Management</h1>
