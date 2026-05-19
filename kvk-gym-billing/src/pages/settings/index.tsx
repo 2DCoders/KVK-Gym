@@ -1,95 +1,103 @@
-import { Settings, Bell, Lock, User, LogOut } from 'lucide-react';
+import { Settings, Bell, Lock, User, LogOut, CreditCard, Moon } from 'lucide-react';
+import { useState } from 'react';
 
 export default function SettingsPage() {
+  const [fullName, setFullName] = useState('Admin User');
+  const [email, setEmail] = useState('admin@kvkgym.com');
+  const [phone, setPhone] = useState('+1 234 567 8900');
+  const [emailNotif, setEmailNotif] = useState(true);
+  const [pushNotif, setPushNotif] = useState(true);
+  const [smsNotif, setSmsNotif] = useState(false);
+
   return (
-    <div className="space-y-6 animate-fade-in max-w-4xl">
-      {/* Header */}
-      <div>
-        <h2 className="text-3xl font-bold text-gray-900">Settings</h2>
-        <p className="text-gray-600 mt-1">Manage your preferences and account settings</p>
-      </div>
-
-      {/* Profile Settings */}
-      <div className="bg-white/80 backdrop-blur-md rounded-2xl p-6 border border-gray-200 shadow-sm">
-        <div className="flex items-center gap-3 mb-6">
-          <User size={24} className="text-primary" />
-          <h3 className="text-xl font-bold text-gray-900">Profile Settings</h3>
+    <div className="max-w-7xl mx-auto px-4 py-6">
+      <div className="flex items-center justify-between mb-6">
+        <div>
+          <h1 className="text-2xl md:text-3xl font-semibold text-gray-900">Settings</h1>
+          <p className="text-sm text-gray-500 mt-1">Manage your account, preferences and security</p>
         </div>
-        <div className="space-y-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">Full Name</label>
-            <input type="text" defaultValue="Admin User" className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent" />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">Email</label>
-            <input type="email" defaultValue="admin@kvkgym.com" className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent" />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">Phone</label>
-            <input type="tel" defaultValue="+1 234 567 8900" className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent" />
-          </div>
-          <button className="px-6 py-2 bg-primary text-white rounded-lg hover:bg-blue-700 transition-all duration-200 font-medium">
-            Save Changes
-          </button>
+        <div className="flex items-center gap-3">
+          <button className="px-3 py-2 text-sm bg-white border rounded-md hover:shadow-sm">Help</button>
+          <button className="px-3 py-2 text-sm bg-white border rounded-md hover:shadow-sm flex items-center gap-2"><Settings size={14} />JSON</button>
         </div>
       </div>
 
-      {/* Notification Settings */}
-      <div className="bg-white/80 backdrop-blur-md rounded-2xl p-6 border border-gray-200 shadow-sm">
-        <div className="flex items-center gap-3 mb-6">
-          <Bell size={24} className="text-primary" />
-          <h3 className="text-xl font-bold text-gray-900">Notifications</h3>
-        </div>
-        <div className="space-y-4">
-          {[
-            { label: 'Email Notifications', desc: 'Receive email updates' },
-            { label: 'Push Notifications', desc: 'Browser push alerts' },
-            { label: 'SMS Alerts', desc: 'Critical updates via SMS' },
-          ].map((notif, i) => (
-            <div key={i} className="flex items-center justify-between p-4 bg-light-gray rounded-lg">
-              <div>
-                <p className="font-medium text-gray-900">{notif.label}</p>
-                <p className="text-sm text-gray-600">{notif.desc}</p>
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* Left column - Profile & Notifications */}
+        <div className="lg:col-span-2 space-y-6">
+          <section className="bg-white rounded-2xl p-6 border border-gray-100 shadow-sm">
+            <div className="flex gap-6">
+              <div className="w-32 flex flex-col items-center">
+                <div className="w-28 h-28 rounded-full bg-gray-50 flex items-center justify-center text-gray-700 font-semibold text-lg">AU</div>
+                <button className="mt-3 text-sm px-3 py-1 border rounded-md">Change</button>
               </div>
-              <input type="checkbox" defaultChecked className="w-5 h-5" />
+
+              <div className="flex-1">
+                <div className="flex items-start justify-between mb-2">
+                  <div>
+                    <h2 className="text-lg font-semibold text-gray-900">Profile</h2>
+                    <p className="text-sm text-gray-500">Update your personal information</p>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm text-gray-700 mb-2">Full name</label>
+                    <input value={fullName} onChange={(e) => setFullName(e.target.value)} className="w-full px-3 py-2 border rounded-md" />
+                  </div>
+                  <div>
+                    <label className="block text-sm text-gray-700 mb-2">Email</label>
+                    <input value={email} onChange={(e) => setEmail(e.target.value)} className="w-full px-3 py-2 border rounded-md" />
+                  </div>
+                  <div className="md:col-span-2">
+                    <label className="block text-sm text-gray-700 mb-2">Phone</label>
+                    <input value={phone} onChange={(e) => setPhone(e.target.value)} className="w-full px-3 py-2 border rounded-md" />
+                  </div>
+                </div>
+
+                <div className="mt-4 flex items-center justify-end gap-3">
+                  <button className="px-4 py-2 border rounded-md">Cancel</button>
+                  <button className="px-4 py-2 bg-emerald-600 text-white rounded-md hover:bg-emerald-700">Save profile</button>
+                </div>
+              </div>
             </div>
-          ))}
+          </section>
         </div>
-      </div>
 
-      {/* Security Settings */}
-      <div className="bg-white/80 backdrop-blur-md rounded-2xl p-6 border border-gray-200 shadow-sm">
-        <div className="flex items-center gap-3 mb-6">
-          <Lock size={24} className="text-primary" />
-          <h3 className="text-xl font-bold text-gray-900">Security</h3>
-        </div>
-        <div className="space-y-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">Current Password</label>
-            <input type="password" className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent" />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">New Password</label>
-            <input type="password" className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent" />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">Confirm Password</label>
-            <input type="password" className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent" />
-          </div>
-          <button className="px-6 py-2 bg-primary text-white rounded-lg hover:bg-blue-700 transition-all duration-200 font-medium">
-            Update Password
-          </button>
-        </div>
-      </div>
+        {/* Right column - Security, Billing, Danger */}
+        <div className="space-y-6">
+          <section className="bg-white rounded-2xl p-6 border border-gray-100 shadow-sm">
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-4">
+                <Lock size={20} className="text-gray-700" />
+                <div>
+                  <h2 className="text-lg font-semibold text-gray-900">Security</h2>
+                  <p className="text-sm text-gray-500">Change your password and manage access</p>
+                </div>
+              </div>
+            </div>
 
-      {/* Danger Zone */}
-      <div className="bg-white/80 backdrop-blur-md rounded-2xl p-6 border border-red-200 shadow-sm">
-        <h3 className="text-xl font-bold text-red-600 mb-4">Danger Zone</h3>
-        <p className="text-gray-600 text-sm mb-4">These actions are irreversible. Please proceed with caution.</p>
-        <button className="px-6 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-all duration-200 font-medium flex items-center gap-2">
-          <LogOut size={18} />
-          Logout
-        </button>
+            <div className="grid grid-cols-1 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-sm text-gray-700 mb-2">Current password</label>
+                  <input type="password" className="w-full px-3 py-2 border rounded-md" />
+                </div>
+                <div>
+                  <label className="block text-sm text-gray-700 mb-2">New password</label>
+                  <input type="password" className="w-full px-3 py-2 border rounded-md" />
+                </div>
+              </div>
+              <div>
+                <label className="block text-sm text-gray-700 mb-2">Confirm password</label>
+                <input type="password" className="w-full px-3 py-2 border rounded-md" />
+              </div>
+              <div className="flex justify-end">
+                <button className="px-3 py-2 bg-emerald-600 text-white rounded-md">Update password</button>
+              </div>
+            </div>
+          </section>
+        </div>
       </div>
     </div>
   );
