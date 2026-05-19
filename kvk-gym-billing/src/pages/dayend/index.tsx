@@ -16,13 +16,25 @@ export default function Dayend() {
   const [pageSize, setPageSize] = useState(10);
   const [showCloseModal, setShowCloseModal] = useState(false);
   const [closingNotes, setClosingNotes] = useState('');
+  const [prevDayAmount, setPrevDayAmount] = useState(5000);
+  const [holdNextDayAmount, setHoldNextDayAmount] = useState('');
+  const [actualCashCount, setActualCashCount] = useState('');
+  const [cashRemark, setCashRemark] = useState('');
 
-  const formatLkr = (amount: number) => `LKR ${amount.toLocaleString('en-LK', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+  const actualCash = actualCashCount ? parseFloat(actualCashCount.replace(/[^\d.-]/g, '')) : 0;
+  const discrepancy = (dayendData.totalCash + prevDayAmount) - actualCash;
+  const isDiscrepancyZero = discrepancy === 0;
+  const canCloseDay = actualCashCount.trim() !== '' && (isDiscrepancyZero || cashRemark.trim() !== '');
 
   const handleCloseDay = () => {
+    if (!canCloseDay) return;
     setShowCloseModal(false);
     setClosingNotes('');
+    setActualCashCount('');
+    setCashRemark('');
   };
+
+  const formatLkr = (amount: number) => `LKR ${amount.toLocaleString('en-LK', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
   return (
     <div className="max-w-7xl mx-auto px-4 py-6">
@@ -102,31 +114,67 @@ export default function Dayend() {
           </div>
         </div>
 
-        <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
+        <div className="grid grid-cols-1 gap-4 lg:grid-cols-4">
           <div className="lg:col-span-2 rounded-2xl border border-gray-200 bg-white p-5 shadow-sm transition-all duration-300 hover:shadow-md hover:border-gray-300">
             <h3 className="text-sm font-semibold text-gray-900 mb-4">Cash Reconciliation</h3>
             <div className="space-y-4">
+              <div className="flex items-center justify-between p-3 rounded-lg bg-blue-50 border border-blue-100">
+                <span className="text-sm text-blue-700 font-medium">Coming from Prev Day</span>
+                <span className="text-sm font-semibold text-blue-700">{formatLkr(prevDayAmount)}</span>
+              </div>
               <div className="flex items-center justify-between p-3 rounded-lg bg-gray-50">
                 <span className="text-sm text-gray-600">Expected Cash Total</span>
-                <span className="text-sm font-semibold text-gray-900">{formatLkr(dayendData.totalCash)}</span>
+                <span className="text-sm font-semibold text-gray-900">{formatLkr(dayendData.totalCash+prevDayAmount)}</span>
               </div>
               <div className="flex items-center justify-between p-3 rounded-lg border border-gray-200">
-                <label className="text-sm text-gray-600">Actual Cash Count</label>
-                <input type="text" placeholder="LKR 0.00" className="w-32 px-3 py-2 text-right text-sm border rounded-lg outline-none focus:ring-2 focus:ring-blue-200 focus:border-blue-500" />
+                <label className="text-sm text-gray-600">Actual Cash Count *</label>
+                <input 
+                  value={actualCashCount}
+                  onChange={(e) => setActualCashCount(e.target.value)}
+                  placeholder="LKR 0.00" 
+                  className="w-32 px-3 py-2 text-right text-sm border rounded-lg outline-none focus:ring-2 focus:ring-blue-200 focus:border-blue-500" 
+                />
               </div>
-              <div className="flex items-center justify-between p-3 rounded-lg bg-emerald-50 border border-emerald-100">
-                <span className="text-sm text-emerald-700 font-medium">Discrepancy</span>
-                <span className="text-sm font-semibold text-emerald-700">{formatLkr(dayendData.cashDiscrepancy)}</span>
+              <div className={`flex items-center justify-between p-3 rounded-lg border-2 font-medium ${isDiscrepancyZero ? 'bg-emerald-50 border-emerald-100 text-emerald-700' : 'bg-red-50 border-red-200 text-red-700'}`}>
+                <span className="text-sm">Discrepancy</span>
+                <span className="text-sm">{formatLkr(Math.abs(discrepancy))}</span>
               </div>
             </div>
           </div>
 
-          <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm transition-all duration-300 hover:shadow-md hover:border-gray-300">
+          <div className="rounded-2xl lg:col-span-2 border border-gray-200 bg-white p-5 shadow-sm transition-all duration-300 hover:shadow-md hover:border-gray-300">
             <h3 className="text-sm font-semibold text-gray-900 mb-4">Closing Actions</h3>
-            <div className="space-y-3">
+            <div className="space-y-4">
+              {!isDiscrepancyZero && (
+                <div className="flex flex-col gap-2 p-3 rounded-lg border border-amber-200 bg-amber-50">
+                  <label className="text-sm text-amber-700 font-medium">Remark (Required) *</label>
+                  <textarea 
+                    value={cashRemark}
+                    onChange={(e) => setCashRemark(e.target.value)}
+                    placeholder="Please provide reason for cash discrepancy..." 
+                    className="w-full px-3 py-2 text-sm border border-amber-200 rounded-lg outline-none focus:ring-2 focus:ring-amber-200 focus:border-amber-500 bg-white" 
+                    rows={2}
+                  />
+                </div>
+              )}
+              <div className="flex items-center justify-between p-3 rounded-lg border border-amber-200 bg-amber-50">
+                <label className="text-sm text-amber-700 font-medium">Hold for Next Day</label>
+                <input 
+                  type="text" 
+                  value={holdNextDayAmount}
+                  onChange={(e) => setHoldNextDayAmount(e.target.value)}
+                  placeholder="LKR 0.00" 
+                  className="w-24 px-3 py-2 text-right text-sm border border-amber-200 rounded-lg outline-none focus:ring-2 focus:ring-amber-200 focus:border-amber-500 bg-white" 
+                />
+              </div>
               <button
                 onClick={() => setShowCloseModal(true)}
-                className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-emerald-600 text-white rounded-lg font-medium transition-all duration-300 hover:bg-emerald-700 hover:-translate-y-0.5 hover:shadow-lg"
+                disabled={!actualCashCount.trim()}
+                className={`w-full flex items-center justify-center gap-2 px-4 py-3 text-white rounded-lg font-medium transition-all duration-300 ${
+                  !actualCashCount.trim() 
+                    ? 'bg-gray-400 cursor-not-allowed' 
+                    : 'bg-emerald-600 hover:bg-emerald-700 hover:-translate-y-0.5 hover:shadow-lg'
+                }`}
               >
                 <Lock size={16} />
                 Close Day
@@ -176,7 +224,15 @@ export default function Dayend() {
               <button onClick={() => setShowCloseModal(false)} className="px-4 py-2 rounded-lg border border-gray-200 text-gray-700 font-medium transition-all duration-300 hover:bg-gray-50">
                 Cancel
               </button>
-              <button onClick={handleCloseDay} className="px-4 py-2 rounded-lg bg-emerald-600 text-white font-medium transition-all duration-300 hover:bg-emerald-700 hover:-translate-y-0.5 hover:shadow-lg">
+              <button 
+                onClick={handleCloseDay} 
+                disabled={!canCloseDay}
+                className={`px-4 py-2 rounded-lg text-white font-medium transition-all duration-300 ${
+                  !canCloseDay 
+                    ? 'bg-gray-400 cursor-not-allowed' 
+                    : 'bg-emerald-600 hover:bg-emerald-700 hover:-translate-y-0.5 hover:shadow-lg'
+                }`}
+              >
                 Close Day
               </button>
             </div>
