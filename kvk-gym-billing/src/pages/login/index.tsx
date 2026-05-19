@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { useNavigate } from 'react-router-dom'
+import { login } from '@/services/auth-api'
 
 export default function Login() {
   const [showPassword, setShowPassword] = useState(false)
@@ -11,6 +12,7 @@ export default function Login() {
     userId: '',
     password: '',
   })
+  const [loading, setLoading] = useState(false)
 
   const navigate = useNavigate()
 
@@ -22,10 +24,18 @@ export default function Login() {
     }))
   }
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault()
-    console.log('Login submitted:', formData)
-    navigate('/members')
+  const handleSubmit = async (e?: React.FormEvent) => {
+    e?.preventDefault();
+    setLoading(true)
+    try {
+      const cashier = await login(formData.userId, formData.password);
+      localStorage.setItem('cashier', JSON.stringify(cashier));
+      navigate('/members')
+    } catch (error) {
+      console.error("Login failed:", error);
+    } finally {
+      setLoading(false)
+    }
   }
 
   return (
@@ -198,10 +208,23 @@ export default function Login() {
                 {/* Login button */}
                 <Button
                   type="submit"
-                  className="w-full h-9 mt-6 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white font-semibold rounded-lg shadow-lg hover:shadow-2xl transform hover:scale-105 transition-all duration-300 flex items-center justify-center gap-2 group text-sm active:scale-95 active:shadow-md"
+                  disabled={loading}
+                  className="w-full h-9 mt-6 bg-gradient-to-r cursor-pointer from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white font-semibold rounded-lg shadow-lg hover:shadow-2xl transform hover:scale-105 transition-all duration-300 flex items-center justify-center gap-2 group text-sm active:scale-95 active:shadow-md"
                 >
-                  <LogIn className="w-4 h-4 group-hover:translate-x-1 transition-transform duration-300" />
-                  Sign In
+                  {loading ? (
+                    <>
+                      <svg className="w-4 h-4 animate-spin" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"></path>
+                      </svg>
+                      Signing In...
+                    </>
+                  ) : (
+                    <>
+                      <LogIn className="w-4 h-4 group-hover:translate-x-1 transition-transform duration-300 cursor-pointer" />
+                      Sign In
+                    </>
+                  )}
                 </Button>
               </form>
 
