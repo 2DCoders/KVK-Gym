@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { LogOut, Menu, Maximize2, Minimize2, Settings, X } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 
 interface NavbarProps {
   sidebarOpen: boolean;
@@ -17,6 +18,8 @@ export default function Navbar({
   const [accountMenuOpen, setAccountMenuOpen] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const accountMenuRef = useRef<HTMLDivElement | null>(null);
+
+  const navigate = useNavigate();
 
   const cashier = localStorage.getItem('cashier') ? JSON.parse(localStorage.getItem('cashier') as string) : null;
 
@@ -75,7 +78,11 @@ export default function Navbar({
         </div>
 
         <div className="flex items-center gap-2 sm:gap-3 ml-auto shrink-0">
-          <button className="hidden cursor-pointer sm:flex items-center justify-center w-10 h-10 rounded-full text-gray-500 hover:bg-gray-100 hover:text-gray-700 transition-colors" aria-label="Settings">
+          <button
+          onClick={() => {
+            navigate("/settings")
+          }}
+           className="hidden cursor-pointer sm:flex items-center justify-center w-10 h-10 rounded-full text-gray-500 hover:bg-gray-100 hover:text-gray-700 transition-colors" aria-label="Settings">
             <Settings size={18} />
           </button>
           <button
