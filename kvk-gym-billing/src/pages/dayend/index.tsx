@@ -45,13 +45,6 @@ export default function Dayend() {
             <p className="text-sm text-gray-500 mt-1">Review and close the business day</p>
           </div>
 
-          <div className="w-full max-w-md">
-            <div className="flex items-center gap-2 bg-white border border-gray-200 rounded-md px-3 py-2 text-sm shadow-sm transition-all duration-300 hover:-translate-y-0.5 hover:shadow-md hover:border-gray-300">
-              <Search size={16} className="text-gray-400" />
-              <input className="w-full outline-none text-sm" placeholder="Search by member or transaction ID..." />
-            </div>
-          </div>
-
           <div className="flex items-center gap-3">
             <button className="flex items-center gap-2 px-3 py-2.5 bg-primary text-white rounded cursor-pointer bg-blue-700 transition-all duration-300 text-sm hover:-translate-y-0.5 hover:shadow-lg hover:bg-blue-800">
               <Download size={14} />
@@ -118,9 +111,9 @@ export default function Dayend() {
           <div className="lg:col-span-2 rounded-2xl border border-gray-200 bg-white p-5 shadow-sm transition-all duration-300 hover:shadow-md hover:border-gray-300">
             <h3 className="text-sm font-semibold text-gray-900 mb-4">Cash Reconciliation</h3>
             <div className="space-y-4">
-              <div className="flex items-center justify-between p-3 rounded-lg bg-blue-50 border border-blue-100">
-                <span className="text-sm text-blue-700 font-medium">Coming from Prev Day</span>
-                <span className="text-sm font-semibold text-blue-700">{formatLkr(prevDayAmount)}</span>
+              <div className="flex items-center justify-between p-3 rounded-lg bg-white border border-gray-100">
+                <span className="text-sm text-gray-600 font-medium">Coming from Prev Day</span>
+                <span className="text-sm font-semibold text-gray-900">{formatLkr(prevDayAmount)}</span>
               </div>
               <div className="flex items-center justify-between p-3 rounded-lg bg-gray-50">
                 <span className="text-sm text-gray-600">Expected Cash Total</span>
@@ -135,7 +128,7 @@ export default function Dayend() {
                   className="w-32 px-3 py-2 text-right text-sm border rounded-lg outline-none focus:ring-2 focus:ring-blue-200 focus:border-blue-500" 
                 />
               </div>
-              <div className={`flex items-center justify-between p-3 rounded-lg border-2 font-medium ${isDiscrepancyZero ? 'bg-emerald-50 border-emerald-100 text-emerald-700' : 'bg-red-50 border-red-200 text-red-700'}`}>
+              <div className={`flex items-center justify-between p-3 rounded-lg border font-medium ${isDiscrepancyZero ? 'border-emerald-100 text-emerald-700' : 'border-red-200 text-red-600'}`}>
                 <span className="text-sm">Discrepancy</span>
                 <span className="text-sm">{formatLkr(Math.abs(discrepancy))}</span>
               </div>
@@ -146,25 +139,25 @@ export default function Dayend() {
             <h3 className="text-sm font-semibold text-gray-900 mb-4">Closing Actions</h3>
             <div className="space-y-4">
               {!isDiscrepancyZero && (
-                <div className="flex flex-col gap-2 p-3 rounded-lg border border-amber-200 bg-amber-50">
-                  <label className="text-sm text-amber-700 font-medium">Remark (Required) *</label>
+                <div className="flex flex-col gap-2 p-3 rounded-lg border border-gray-100 bg-white">
+                  <label className="text-sm text-gray-700 font-medium">Remark (Required) *</label>
                   <textarea 
                     value={cashRemark}
                     onChange={(e) => setCashRemark(e.target.value)}
                     placeholder="Please provide reason for cash discrepancy..." 
-                    className="w-full px-3 py-2 text-sm border border-amber-200 rounded-lg outline-none focus:ring-2 focus:ring-amber-200 focus:border-amber-500 bg-white" 
+                    className="w-full px-3 py-2 text-sm border border-gray-100 rounded-lg outline-none focus:ring-2 focus:ring-blue-200 focus:border-blue-500 bg-white" 
                     rows={2}
                   />
                 </div>
               )}
-              <div className="flex items-center justify-between p-3 rounded-lg border border-amber-200 bg-amber-50">
-                <label className="text-sm text-amber-700 font-medium">Hold for Next Day</label>
+              <div className="flex items-center justify-between p-3 rounded-lg border border-gray-100 bg-white">
+                <label className="text-sm text-gray-700 font-medium">Hold for Next Day</label>
                 <input 
                   type="text" 
                   value={holdNextDayAmount}
                   onChange={(e) => setHoldNextDayAmount(e.target.value)}
                   placeholder="LKR 0.00" 
-                  className="w-24 px-3 py-2 text-right text-sm border border-amber-200 rounded-lg outline-none focus:ring-2 focus:ring-amber-200 focus:border-amber-500 bg-white" 
+                  className="w-24 px-3 py-2 text-right text-sm border border-gray-100 rounded-lg outline-none focus:ring-2 focus:ring-blue-200 focus:border-blue-500 bg-white" 
                 />
               </div>
               <button
