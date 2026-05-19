@@ -6,6 +6,7 @@ import Payments from "./pages/payments"
 import Reports from "./pages/reports"
 import SettingsPage from "./pages/settings"
 import AdminLayout from "./layouts/admin-layout"
+import Dayend from "./pages/dayend"
 
 function App() {
   return (
@@ -16,6 +17,7 @@ function App() {
       <Route element={<AdminLayout><Members /></AdminLayout>} path="/members" />
       <Route element={<AdminLayout><Trainers /></AdminLayout>} path="/trainers" />
       <Route element={<AdminLayout><Payments /></AdminLayout>} path="/payments" />
+      <Route element={<AdminLayout><Dayend /></AdminLayout>} path="/dayend" />
       <Route element={<AdminLayout><Reports /></AdminLayout>} path="/reports" />
       <Route element={<AdminLayout><SettingsPage /></AdminLayout>} path="/settings" />
       
