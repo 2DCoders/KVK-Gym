@@ -27,18 +27,17 @@ export default function SettingsPage() {
                                 <div className="flex items-start justify-between mb-2">
                                     <div>
                                         <h2 className="text-lg font-semibold text-gray-900">Profile</h2>
-                                        <p className="text-sm text-gray-500">Update your personal information</p>
                                     </div>
                                 </div>
 
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                     <div>
-                                        <label className="block text-sm text-gray-700 mb-2">Full name</label>
-                                        <input value={fullName} onChange={(e) => setFullName(e.target.value)} readOnly className="w-full px-3 py-2 border rounded-md" />
+                                        <label className="block text-sm text-gray-700 mb-1.5">Full name</label>
+                                        <input value={fullName} onChange={(e) => setFullName(e.target.value)} readOnly className="w-full px-3 py-1 border rounded-md" />
                                     </div>
                                     <div>
-                                        <label className="block text-sm text-gray-700 mb-2">Email</label>
-                                        <input value={email} onChange={(e) => setEmail(e.target.value)} readOnly className="w-full px-3 py-2 border rounded-md" />
+                                        <label className="block text-sm text-gray-700 mb-1.5">Email</label>
+                                        <input value={email} onChange={(e) => setEmail(e.target.value)} readOnly className="w-full px-3 py-1 border rounded-md" />
                                     </div>
                                 </div>
                             </div>
@@ -62,20 +61,20 @@ export default function SettingsPage() {
                         <div className="grid grid-cols-1 gap-3">
                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                                 <div>
-                                    <label className="block text-sm text-gray-700 mb-2">Current password</label>
-                                    <input type="password" className="w-full px-3 py-2 border rounded-md" />
+                                    <label className="block text-sm text-gray-700 mb-1.5">Current password</label>
+                                    <input type="password" className="w-full px-3 py-1 border rounded-md" />
                                 </div>
                                 <div>
-                                    <label className="block text-sm text-gray-700 mb-2">New password</label>
-                                    <input type="password" className="w-full px-3 py-2 border rounded-md" />
+                                    <label className="block text-sm text-gray-700 mb-1.5">New password</label>
+                                    <input type="password" className="w-full px-3 py-1 border rounded-md" />
                                 </div>
                             </div>
                             <div>
-                                <label className="block text-sm text-gray-700 mb-2">Confirm password</label>
-                                <input type="password" className="w-full px-3 py-2 border rounded-md" />
+                                <label className="block text-sm text-gray-700 mb-1.5">Confirm password</label>
+                                <input type="password" className="w-full px-3 py-1 border rounded-md" />
                             </div>
                             <div className="flex justify-end">
-                                <button className="px-3 py-2 bg-emerald-600 text-white rounded-md">Update password</button>
+                                <button className="inline-flex cursor-pointer items-center gap-2 rounded-lg bg-blue-600 px-5 py-2 text-sm font-medium text-white transition hover:bg-blue-700">Update password</button>
                             </div>
                         </div>
                     </section>
