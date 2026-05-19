@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Eye, EyeOff, Mail, Lock, LogIn, Dumbbell } from 'lucide-react'
+import { Eye, EyeOff, Mail, Lock, LogIn, Dumbbell, X, CheckCircle } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -9,6 +9,10 @@ import Alert from '@/components/ui/alert'
 
 export default function Login() {
   const [showPassword, setShowPassword] = useState(false)
+  const [showForgotModal, setShowForgotModal] = useState(false)
+  const [forgotEmail, setForgotEmail] = useState('')
+  const [forgotLoading, setForgotLoading] = useState(false)
+  const [forgotSuccess, setForgotSuccess] = useState(false)
   const [formData, setFormData] = useState({
     userId: '',
     password: '',
@@ -17,6 +21,31 @@ export default function Login() {
   const [pageAlert, setPageAlert] = useState<{ visible: boolean; variant?: 'success' | 'error' | 'warning' | 'info'; title?: string; description?: string }>({ visible: false });
 
   const navigate = useNavigate()
+
+  const handleForgotSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setForgotLoading(true)
+    try {
+      // Simulate API call - replace with actual API endpoint
+      await new Promise(resolve => setTimeout(resolve, 1500))
+      setForgotSuccess(true)
+      setTimeout(() => {
+        setShowForgotModal(false)
+        setForgotSuccess(false)
+        setForgotEmail('')
+      }, 2500)
+    } catch (error) {
+      setPageAlert({ visible: true, variant: 'error', title: 'Error', description: 'Failed to send reset request.' })
+    } finally {
+      setForgotLoading(false)
+    }
+  }
+
+  const closeForgotModal = () => {
+    setShowForgotModal(false)
+    setForgotEmail('')
+    setForgotSuccess(false)
+  }
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value, type, checked } = e.target
@@ -205,11 +234,12 @@ export default function Login() {
 
                 {/* Forgot password link */}
                 <div className="flex justify-end">
-                  <a
-                    href="#"
-                    className="text-blue-600 hover:text-blue-700 font-medium text-xs transition-colors">
+                  <button
+                    type="button"
+                    onClick={() => setShowForgotModal(true)}
+                    className="text-blue-600 cursor-pointer hover:text-blue-700 font-medium text-xs transition-colors">
                     Forgot password?
-                  </a>
+                  </button>
                 </div>
 
                 {/* Login button */}
@@ -256,6 +286,98 @@ export default function Login() {
           </div>
         </div>
       </div>
+
+      {/* Forgot Password Modal */}
+      {showForgotModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4 animate-fade-in">
+          <div className="bg-white rounded-3xl shadow-2xl border border-gray-200 w-full max-w-md overflow-hidden animate-slide-up">
+            {/* Modal Header */}
+            <div className="bg-gradient-to-r from-blue-500 to-blue-600 px-6 py-6 flex items-center justify-between">
+              <div>
+                <h3 className="text-xl font-bold text-white">Reset Password</h3>
+                <p className="text-blue-100 text-sm mt-1">Request password reset from super admin</p>
+              </div>
+              <button
+                onClick={closeForgotModal}
+                className="text-white cursor-pointer hover:bg-blue-500/30 p-2 rounded-lg transition-all duration-200"
+              >
+                <X size={20} />
+              </button>
+            </div>
+
+            {/* Modal Content */}
+            <div className="p-6">
+              {!forgotSuccess ? (
+                <form onSubmit={handleForgotSubmit} className="space-y-4">
+                  <div>
+                    <Label htmlFor="forgotEmail" className="text-gray-700 font-semibold text-sm mb-2 block">
+                      Email or User ID
+                    </Label>
+                    <div className="relative group">
+                      <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 group-focus-within:text-blue-500 transition-colors" />
+                      <Input
+                        id="forgotEmail"
+                        type="text"
+                        placeholder="Enter your email or user ID"
+                        value={forgotEmail}
+                        onChange={(e) => setForgotEmail(e.target.value)}
+                        className="pl-10 pr-4 bg-gray-50 border border-gray-300 rounded-lg focus:bg-white focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all duration-300 placeholder:text-gray-400 h-10 text-gray-900"
+                        required
+                      />
+                    </div>
+                    <p className="text-xs text-gray-500 mt-2">
+                      We'll send a password reset link to your registered email address.
+                    </p>
+                  </div>
+
+                  <div className="space-y-3 pt-2">
+                    <button
+                      type="submit"
+                      disabled={forgotLoading}
+                      className="w-full h-10 cursor-pointer bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 disabled:from-gray-400 disabled:to-gray-400 text-white font-semibold rounded-lg shadow-lg hover:shadow-xl transform hover:scale-105 disabled:scale-100 transition-all duration-300 flex items-center justify-center gap-2 text-sm"
+                    >
+                      {forgotLoading ? (
+                        <>
+                          <svg className="w-4 h-4 animate-spin" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"></path>
+                          </svg>
+                          Sending...
+                        </>
+                      ) : (
+                        <>
+                          <Mail size={16} />
+                          Send Reset Request
+                        </>
+                      )}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={closeForgotModal}
+                      className="w-full h-10 cursor-pointer border border-gray-300 text-gray-700 font-semibold rounded-lg hover:bg-gray-50 transition-all duration-300 text-sm"
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                </form>
+              ) : (
+                <div className="text-center py-6">
+                  <div className="inline-flex items-center justify-center w-16 h-16 bg-emerald-100 rounded-full mb-4 animate-bounce-soft">
+                    <CheckCircle size={32} className="text-emerald-600" />
+                  </div>
+                  <h4 className="text-lg font-bold text-gray-900 mb-2">Request Sent!</h4>
+                  <p className="text-gray-600 text-sm mb-4">
+                    Your password reset request has been sent to the super admin. You'll receive an email shortly with reset instructions.
+                  </p>
+                  <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg text-xs text-blue-700">
+                    Check your email inbox and spam folder for the reset link.
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
