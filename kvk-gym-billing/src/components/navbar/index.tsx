@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { LogOut, Menu, Maximize2, Settings, X } from 'lucide-react';
+import { LogOut, Menu, Maximize2, Minimize2, Settings, X } from 'lucide-react';
 
 interface NavbarProps {
   sidebarOpen: boolean;
@@ -15,6 +15,7 @@ export default function Navbar({
   mobileDrawerOpen,
 }: NavbarProps) {
   const [accountMenuOpen, setAccountMenuOpen] = useState(false);
+  const [isFullscreen, setIsFullscreen] = useState(false);
   const accountMenuRef = useRef<HTMLDivElement | null>(null);
 
   const cashier = localStorage.getItem('cashier') ? JSON.parse(localStorage.getItem('cashier') as string) : null;
@@ -26,12 +27,32 @@ export default function Navbar({
       }
     };
 
+    const handleFullscreenChange = () => {
+      setIsFullscreen(Boolean(document.fullscreenElement));
+    };
+
     if (accountMenuOpen) {
       document.addEventListener('mousedown', handlePointerDown);
     }
+    document.addEventListener('fullscreenchange', handleFullscreenChange);
 
-    return () => document.removeEventListener('mousedown', handlePointerDown);
+    return () => {
+      document.removeEventListener('mousedown', handlePointerDown);
+      document.removeEventListener('fullscreenchange', handleFullscreenChange);
+    };
   }, [accountMenuOpen]);
+
+  const toggleFullscreen = async () => {
+    try {
+      if (document.fullscreenElement) {
+        await document.exitFullscreen();
+      } else {
+        await document.documentElement.requestFullscreen();
+      }
+    } catch (error) {
+      console.error('Fullscreen toggle failed:', error);
+    }
+  };
 
   return (
     <nav className={`fixed top-0 right-0 z-40 h-16 border-b border-gray-200/80 bg-white/95 backdrop-blur-md shadow-[0_1px_0_rgba(15,23,42,0.04)] transition-all duration-300 ${sidebarOpen ? 'lg:left-72' : 'lg:left-20'} left-0`}>
@@ -39,7 +60,7 @@ export default function Navbar({
         <div className="flex items-center gap-3 shrink-0">
           <button
             onClick={onSidebarToggle}
-            className="hidden lg:flex items-center justify-center w-10 h-10 rounded-full text-gray-700 hover:bg-gray-100 transition-colors"
+            className="hidden lg:flex cursor-pointer items-center justify-center w-10 h-10 rounded-full text-gray-700 hover:bg-gray-100 transition-colors"
             aria-label="Toggle sidebar"
           >
             <Menu size={20} />
@@ -57,8 +78,12 @@ export default function Navbar({
           <button className="hidden cursor-pointer sm:flex items-center justify-center w-10 h-10 rounded-full text-gray-500 hover:bg-gray-100 hover:text-gray-700 transition-colors" aria-label="Settings">
             <Settings size={18} />
           </button>
-          <button className="hidden cursor-pointer sm:flex items-center justify-center w-10 h-10 rounded-full text-gray-500 hover:bg-gray-100 hover:text-gray-700 transition-colors" aria-label="Full screen">
-            <Maximize2 size={18} />
+          <button
+            onClick={toggleFullscreen}
+            className="hidden cursor-pointer sm:flex items-center justify-center w-10 h-10 rounded-full text-gray-500 hover:bg-gray-100 hover:text-gray-700 transition-colors"
+            aria-label={isFullscreen ? 'Exit full screen' : 'Full screen'}
+          >
+            {isFullscreen ? <Minimize2 size={18} /> : <Maximize2 size={18} />}
           </button>
           <div ref={accountMenuRef} className="relative">
             <button
