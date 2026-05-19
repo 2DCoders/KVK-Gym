@@ -9,6 +9,8 @@ export interface AlertProps {
   description?: React.ReactNode
   dismissible?: boolean
   onClose?: () => void
+  autoCloseMs?: number
+  exitDurationMs?: number
   className?: string
 }
 
@@ -19,28 +21,83 @@ const variantStyles: Record<AlertVariant, { bg: string; ring: string; icon: Reac
   info: { bg: 'bg-blue-50 border-blue-100', ring: 'ring-blue-200', icon: <CheckCircle className="w-5 h-5 text-blue-600" /> },
 }
 
-export function Alert({ variant = 'info', title, description, dismissible = true, onClose, className = '' }: AlertProps) {
+export function Alert({
+  variant = 'info',
+  title,
+  description,
+  dismissible = true,
+  onClose,
+  autoCloseMs = 5000,
+  exitDurationMs = 240,
+  className = '',
+}: AlertProps) {
   const styles = variantStyles[variant]
+  const [closing, setClosing] = React.useState(false)
+
+  React.useEffect(() => {
+    if (!autoCloseMs) return undefined
+
+    const autoCloseTimer = window.setTimeout(() => {
+      setClosing(true)
+    }, autoCloseMs)
+
+    return () => window.clearTimeout(autoCloseTimer)
+  }, [autoCloseMs])
+
+  React.useEffect(() => {
+    if (!closing || !onClose) return undefined
+
+    const closeTimer = window.setTimeout(() => {
+      onClose()
+    }, exitDurationMs)
+
+    return () => window.clearTimeout(closeTimer)
+  }, [closing, exitDurationMs, onClose])
+
+  const handleClose = () => {
+    if (closing) return
+    setClosing(true)
+  }
 
   return (
-    <div className={`w-full max-w-3xl mx-auto rounded-xl border ${styles.bg} ${className}`} role="alert">
-      <div className={`relative flex items-start gap-3 p-4 md:p-4`}> 
-        <div className="shrink-0 flex items-center justify-center">{styles.icon}</div>
+    <div className="fixed right-4 top-4 z-9999 w-[calc(100vw-2rem)] max-w-sm pointer-events-none sm:right-6 sm:top-6" role="presentation">
+      <style>
+        {`@keyframes alert-slide-in {
+          0% { opacity: 0; transform: translateX(24px) scale(0.98); }
+          100% { opacity: 1; transform: translateX(0) scale(1); }
+        }
+        @keyframes alert-slide-out {
+          0% { opacity: 1; transform: translateX(0) scale(1); }
+          100% { opacity: 0; transform: translateX(24px) scale(0.98); }
+        }`}
+      </style>
 
-        <div className="min-w-0 flex-1">
-          {title && <div className="text-sm font-semibold text-gray-900">{title}</div>}
-          {description && <div className="mt-1 text-sm text-gray-600">{description}</div>}
+      <div
+        role="alert"
+        className={`pointer-events-auto rounded-2xl border ${styles.bg} shadow-2xl shadow-gray-950/10 backdrop-blur-xl ring-1 ${styles.ring} overflow-hidden ${className}`}
+        style={{ animation: closing ? 'alert-slide-out 240ms ease-in forwards' : 'alert-slide-in 240ms ease-out' }}
+      >
+        <div className="absolute inset-0 bg-linear-to-r from-white/40 via-transparent to-transparent" />
+        <div className="relative flex items-start gap-3 p-4 md:p-4">
+          <div className="shrink-0 flex items-center justify-center rounded-xl bg-white/70 p-2 shadow-sm">
+            {styles.icon}
+          </div>
+
+          <div className="min-w-0 flex-1">
+            {title && <div className="text-sm font-semibold text-gray-900">{title}</div>}
+            {description && <div className="mt-1 text-sm text-gray-600">{description}</div>}
+          </div>
+
+          {dismissible && (
+            <button
+              onClick={handleClose}
+              aria-label="Close alert"
+              className="ml-2 rounded-lg p-2 text-gray-500 hover:bg-white/50 hover:text-gray-800 transition-colors"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          )}
         </div>
-
-        {dismissible && (
-          <button
-            onClick={onClose}
-            aria-label="Close alert"
-            className="ml-2 rounded-lg p-2 text-gray-500 hover:bg-white/30 hover:text-gray-700 transition-colors"
-          >
-            <X className="w-4 h-4" />
-          </button>
-        )}
       </div>
     </div>
   )

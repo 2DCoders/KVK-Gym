@@ -1,6 +1,6 @@
 import { createPortal } from 'react-dom';
 import { useEffect, useState } from 'react';
-import { ArrowLeft, ArrowRight, MoreVertical, Plus, Search, X, Eye, Edit, Trash2, Dumbbell, Fingerprint } from 'lucide-react';
+import { ArrowLeft, ArrowRight, MoreVertical, Plus, Search, X, Eye, Edit, Trash2, Fingerprint } from 'lucide-react';
 import Alert from '@/components/ui/alert'
 
 type TrainerStatus = 'approved' | 'pending' | 'blocked';
@@ -61,7 +61,6 @@ export default function Trainers() {
     // placeholder - in real app submit to API
     closeNewTrainerModal();
     setPageAlert({ visible: true, variant: 'success', title: 'Trainer added', description: 'Trainer registered successfully.' });
-    setTimeout(() => setPageAlert((s) => ({ ...s, visible: false })), 4000);
   };
 
   return (

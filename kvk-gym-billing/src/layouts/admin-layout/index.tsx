@@ -1,4 +1,4 @@
-import { useState, type ReactNode } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
 import Navbar from '@/components/navbar';
 import Sidebar from '@/components/sidebar';
 
@@ -9,6 +9,16 @@ interface AdminLayoutProps {
 export default function AdminLayout({ children }: AdminLayoutProps) {
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [mobileDrawerOpen, setMobileDrawerOpen] = useState(false);
+
+  const cashier = localStorage.getItem('cashier') ? JSON.parse(localStorage.getItem('cashier') as string) : null;
+
+  useEffect(() => {
+    console.log(cashier?.token);
+    
+    if (!cashier?.token) {
+      window.location.href = '/';
+    }
+  }, [cashier]);
 
   return (
     <div className="min-h-screen bg-linear-to-br from-off-white via-white to-light-gray">
