@@ -1,17 +1,41 @@
 import { createPortal } from 'react-dom';
 import { useEffect, useState } from 'react';
 import { ArrowLeft, ArrowRight, Fingerprint, Loader2, MoreVertical, Plus, Search, UserRound, X, Eye, Edit, Trash2 } from 'lucide-react';
-import { registerMember } from '@/services/members-api';
+import { registerMember, getMembers } from '@/services/members-api';
 import Alert from '@/components/ui/alert';
 
 type MemberStatus = 'approved' | 'pending' | 'blocked';
+
+type ApiMember = {
+  id: string;
+  membershipNumber: string;
+  firstName: string;
+  lastName: string;
+  email: string;
+  phoneNumber: string | null;
+  dateOfBirth: string;
+  gender: string;
+  membershipStatus: string;
+  membershipPlan: string;
+  identityUserId: string | null;
+};
+
+type TableMember = {
+  id: string;
+  name: string;
+  pid: string;
+  age: string;
+  gender: string;
+  phone: string;
+  status: MemberStatus;
+};
+
 type MemberForm = {
   firstName: string;
   lastName: string;
   dateOfBirth: string;
   gender: string;
   phone: string;
-  nic: string;
   email: string;
   membershipPlan: string;
 };
@@ -33,7 +57,6 @@ type MemberFieldErrors = Partial<Record<keyof MemberForm, string>>;
 
 const sriLankanMobileRegex = /^7\d{8}$/;
 const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-const nicRegex = /^(\d{9}[VXvx]|\d{12})$/;
 
 const validateMemberForm = (form: MemberForm): MemberFieldErrors => {
   const errors: MemberFieldErrors = {};
@@ -71,10 +94,6 @@ const validateMemberForm = (form: MemberForm): MemberFieldErrors => {
     errors.email = 'Enter a valid email address.';
   }
 
-  if (!nicRegex.test(form.nic.trim())) {
-    errors.nic = 'Enter a valid NIC number (9 digits + V/X, or 12 digits).';
-  }
-
   return errors;
 };
 
@@ -82,22 +101,16 @@ const initialMemberForm: MemberForm = {
   firstName: '',
   lastName: '',
   dateOfBirth: '',
-  gender: 'Male',
+  gender: '',
   phone: '',
-  nic: '',
   email: '',
   membershipPlan: 'Monthly',
 };
 
 export default function Members() {
-  const members = [
-    { id: 1, name: 'Janidu Samarakoon', pid: 'GYM-MEM-20260001', age: '36 yrs', gender: 'Male', phone: '+94783445678', nic: '923314172V', status: 'approved' as MemberStatus },
-    { id: 2, name: 'Mahanama N/A', pid: 'GYM-MEM-20260002', age: '0 yrs', gender: 'Male', phone: '+94714589632', nic: '—', status: 'pending' as MemberStatus },
-    { id: 3, name: 'Doe N/A', pid: 'GYM-MEM-20260003', age: '3 yrs', gender: 'Male', phone: '+94716523546', nic: '923314175V', status: 'blocked' as MemberStatus },
-    { id: 4, name: 'Kavindu Perera', pid: 'GYM-MEM-20260004', age: '28 yrs', gender: 'Male', phone: '+94771234567', nic: '934556789V', status: 'approved' as MemberStatus },
-    { id: 5, name: 'Nimali Fernando', pid: 'GYM-MEM-20260005', age: '32 yrs', gender: 'Female', phone: '+94772333444', nic: '912345678V', status: 'pending' as MemberStatus },
-    { id: 6, name: 'Samantha Dias', pid: 'GYM-MEM-20260006', age: '41 yrs', gender: 'Male', phone: '+94778889900', nic: '881234567V', status: 'approved' as MemberStatus },
-  ];
+  const [members, setMembers] = useState<TableMember[]>([]);
+  const [isLoadingMembers, setIsLoadingMembers] = useState(true);
+  const [membersError, setMembersError] = useState('');
 
   const [activeTab, setActiveTab] = useState<MemberStatus>('approved');
   const [isNewMemberOpen, setIsNewMemberOpen] = useState(false);
@@ -108,17 +121,74 @@ export default function Members() {
   const [isRegistering, setIsRegistering] = useState(false);
   const [pageAlert, setPageAlert] = useState<{ visible: boolean; variant?: 'success' | 'error' | 'warning' | 'info'; title?: string; description?: string }>({ visible: false });
 
-
   // pagination state
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
-  const [openAction, setOpenAction] = useState<{ id: number; top: number; left: number } | null>(null);
+  const [openAction, setOpenAction] = useState<{ id: string; top: number; left: number } | null>(null);
+
+  // Helper functions
+  const calculateAge = (dateOfBirth: string): string => {
+    try {
+      const [day, month, year] = dateOfBirth.split('/').map(Number);
+      const birthDate = new Date(year, month - 1, day);
+      const today = new Date();
+      let age = today.getFullYear() - birthDate.getFullYear();
+      const monthDiff = today.getMonth() - birthDate.getMonth();
+      if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) age--;
+      return age > 0 ? `${age} yrs` : '-- yrs';
+    } catch {
+      return '-- yrs';
+    }
+  };
+
+  const mapMembershipStatusToTabStatus = (status: string): MemberStatus => {
+    if (status === 'Active') return 'approved';
+    if (status === 'Inactive') return 'pending';
+    return 'blocked';
+  };
+
+  // Fetch members on component mount
+  useEffect(() => {
+    const fetchMembers = async () => {
+      setIsLoadingMembers(true);
+      try {
+        const apiMembers: ApiMember[] = await getMembers();
+        
+        // Filter members to only show those with membershipNumber starting with "GYM-MEM"
+        const filteredApiMembers = apiMembers.filter((member) =>
+          member.membershipNumber.startsWith('GYM-MEM')
+        );
+        
+        // Map API response to table format
+        const mappedMembers: TableMember[] = filteredApiMembers.map((member) => ({
+          id: member.id,
+          name: `${member.firstName} ${member.lastName}`,
+          pid: member.membershipNumber,
+          age: calculateAge(member.dateOfBirth),
+          gender: Number(member.gender) === 1 ? "Male" : "Female",
+          phone: member.phoneNumber ? `+94${member.phoneNumber}` : 'N/A',
+          status: mapMembershipStatusToTabStatus(member.membershipStatus),
+        }));
+        
+        setMembers(mappedMembers);
+        setMembersError('');
+      } catch (error) {
+        setMembersError('Failed to load members. Please try again later.');
+        setMembers([]);
+      } finally {
+        setIsLoadingMembers(false);
+      }
+    };
+
+    fetchMembers();
+  }, []);
 
   useEffect(() => {
     const handleDoc = () => setOpenAction(null);
     if (openAction) document.addEventListener('mousedown', handleDoc);
     return () => document.removeEventListener('mousedown', handleDoc);
   }, [openAction]);
+
   const filteredMembers = members.filter((member) => member.status === activeTab);
   const total = filteredMembers.length;
   const totalPages = Math.max(1, Math.ceil(total / pageSize));
@@ -229,7 +299,7 @@ export default function Members() {
           <div className="w-full max-w-md">
             <div className="flex items-center gap-2 bg-white border border-gray-200 rounded-md px-3 py-2 text-sm shadow-sm">
               <Search size={16} className="text-gray-400" />
-              <input className="w-full outline-none text-sm" placeholder="Search by name, phone, NIC, or member ID..." />
+              <input className="w-full outline-none text-sm" placeholder="Search by name, phone, or member ID..." />
             </div>
           </div>
 
@@ -277,12 +347,38 @@ export default function Members() {
                     <th className="py-2 px-3">AGE</th>
                     <th className="py-2 px-3">GENDER</th>
                     <th className="py-2 px-3">PHONE</th>
-                    <th className="py-2 px-3">NIC</th>
+                    <th className="py-2 px-3">STATUS</th>
                     <th className="py-2 px-3">ACTIONS</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {pageItems.map((p) => (
+                  {isLoadingMembers ? (
+                    <tr>
+                      <td colSpan={6} className="py-8">
+                        <div className="flex items-center justify-center gap-3">
+                          <div className="w-5 h-5 border-2 border-blue-200 border-t-blue-600 rounded-full animate-spin" />
+                          <span className="text-sm text-gray-600">Loading members...</span>
+                        </div>
+                      </td>
+                    </tr>
+                  ) : membersError ? (
+                    <tr>
+                      <td colSpan={6} className="py-8">
+                        <div className="flex items-center justify-center">
+                          <span className="text-sm text-red-600">{membersError}</span>
+                        </div>
+                      </td>
+                    </tr>
+                  ) : pageItems.length === 0 ? (
+                    <tr>
+                      <td colSpan={6} className="py-8">
+                        <div className="flex items-center justify-center">
+                          <span className="text-sm text-gray-500">No members found</span>
+                        </div>
+                      </td>
+                    </tr>
+                  ) : (
+                    pageItems.map((p) => (
                     <tr key={p.id} className="border-b border-gray-100 hover:bg-gray-50">
                       <td className="py-2 px-3 align-top">
                         <div className="flex items-center gap-3">
@@ -296,7 +392,17 @@ export default function Members() {
                       <td className="py-2 px-3 align-top text-gray-700">{p.age}</td>
                       <td className="py-2 px-3 align-top"><span className="px-2 py-0.5 rounded-full bg-gray-100 text-gray-700 text-xs">{p.gender}</span></td>
                       <td className="py-2 px-3 align-top text-gray-700">{p.phone}</td>
-                      <td className="py-2 px-3 align-top text-gray-700">{p.nic}</td>
+                      <td className="py-2 px-3 align-top">
+                        <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${
+                          p.status === 'approved'
+                            ? 'bg-emerald-100 text-emerald-700'
+                            : p.status === 'pending'
+                              ? 'bg-amber-100 text-amber-700'
+                              : 'bg-red-100 text-red-700'
+                        }`}>
+                          {p.status === 'approved' ? 'Active' : p.status === 'pending' ? 'Inactive' : 'Blocked'}
+                        </span>
+                      </td>
                       <td className="py-2 px-3 align-top text-gray-500">
                         <div className="relative inline-block">
                           <button onClick={(e) => {
@@ -328,7 +434,8 @@ export default function Members() {
                         )}
                       </td>
                     </tr>
-                  ))}
+                  ))
+                  )}
                 </tbody>
               </table>
             </div>
@@ -424,7 +531,7 @@ export default function Members() {
                     <div>
                       <label className="mb-2 block text-xs font-medium text-gray-900 sm:text-sm">Date of Birth <span className="text-red-500">*</span></label>
                       <input type="date" value={form.dateOfBirth} onChange={(event) => updateField('dateOfBirth', event.target.value)} className="w-full rounded-lg border border-gray-200 px-4 py-2.5 text-sm outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100" />
-                      {fieldErrors.dateOfBirth ? <p className="mt-2 text-[11px] text-red-600 sm:text-xs">{fieldErrors.dateOfBirth}</p> : <p className="mt-2 text-[11px] text-gray-500 sm:text-xs">Will be sent as RFC3339 date at midnight UTC (e.g. 2017-07-21T00:00:00Z).</p>}
+                      {fieldErrors.dateOfBirth ? <p className="mt-2 text-[11px] text-red-600 sm:text-xs">{fieldErrors.dateOfBirth}</p> : <p className="mt-2 text-[11px] text-gray-500 sm:text-xs"></p>}
                     </div>
                     <div>
                       <label className="mb-2 block text-xs font-medium text-gray-900 sm:text-sm">Gender <span className="text-red-500">*</span></label>
@@ -440,11 +547,6 @@ export default function Members() {
                         <input value={form.phone} onChange={(event) => updateField('phone', event.target.value)} inputMode="numeric" maxLength={9} className="w-full px-4 py-2.5 text-sm outline-none" placeholder="712 345 678" />
                       </div>
                       <p className={`mt-2 text-[11px] sm:text-xs ${fieldErrors.phone ? 'text-red-600' : 'text-gray-500'}`}>{fieldErrors.phone ?? 'Enter 9 digits starting with 7, without +94.'}</p>
-                    </div>
-                    <div>
-                      <label className="mb-2 block text-xs font-medium text-gray-900 sm:text-sm">NIC No <span className="text-red-500">*</span></label>
-                      <input value={form.nic} onChange={(event) => updateField('nic', event.target.value)} className="w-full rounded-lg border border-gray-200 px-4 py-2.5 text-sm outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100" placeholder="123456789V or 200012345678" />
-                      <p className={`mt-2 text-[11px] sm:text-xs ${fieldErrors.nic ? 'text-red-600' : 'text-gray-500'}`}>{fieldErrors.nic ?? '9 digits + V/X, or 12-digit new format.'}</p>
                     </div>
                     <div>
                       <label className="mb-2 block text-xs font-medium text-gray-900 sm:text-sm">Email <span className="text-red-500">*</span></label>

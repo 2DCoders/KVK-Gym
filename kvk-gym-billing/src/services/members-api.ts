@@ -21,3 +21,16 @@ export const registerMember = async (memberData: any) => {
     throw error;
   }
 };
+
+export const getMembers = async () => {
+  try {
+    const response = await axios.get(`${MEMBERS_API_URL}`, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
+    return response.data;
+  } catch (error) {
+    throw error;
+  }
+}
