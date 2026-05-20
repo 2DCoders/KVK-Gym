@@ -1,4 +1,5 @@
 import * as React from 'react'
+import { createPortal } from 'react-dom'
 import { CheckCircle, AlertTriangle, XCircle, X } from 'lucide-react'
 
 export type AlertVariant = 'success' | 'error' | 'warning' | 'info'
@@ -59,8 +60,8 @@ export function Alert({
     setClosing(true)
   }
 
-  return (
-    <div className="fixed right-4 top-4 z-9999999 w-[calc(100vw-2rem)] max-w-sm pointer-events-none sm:right-6 sm:top-6" role="presentation">
+  return createPortal(
+    <div className="fixed right-4 top-4 w-[calc(100vw-2rem)] max-w-sm pointer-events-none sm:right-6 sm:top-6" style={{ zIndex: 1000000 }} role="presentation">
       <style>
         {`@keyframes alert-slide-in {
           0% { opacity: 0; transform: translateX(24px) scale(0.98); }
@@ -99,7 +100,8 @@ export function Alert({
           )}
         </div>
       </div>
-    </div>
+    </div>,
+    document.body,
   )
 }
 
