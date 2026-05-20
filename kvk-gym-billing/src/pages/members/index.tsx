@@ -48,6 +48,18 @@ const validateMemberForm = (form: MemberForm): MemberFieldErrors => {
 
   if (!form.dateOfBirth) {
     errors.dateOfBirth = 'Date of birth is required.';
+  } else {
+    // expect yyyy-mm-dd
+    const m = form.dateOfBirth.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+    if (!m) {
+      errors.dateOfBirth = 'Enter a valid date (YYYY-MM-DD).';
+    } else {
+      const y = Number(m[1]);
+      const mo = Number(m[2]);
+      const d = Number(m[3]);
+      const ts = Date.UTC(y, mo - 1, d);
+      if (!isFinite(ts)) errors.dateOfBirth = 'Enter a valid date.';
+    }
   }
 
   const phone = form.phone.trim().replace(/[\s-]/g, '');
@@ -145,7 +157,17 @@ export default function Members() {
     lastName: form.lastName.trim(),
     email: form.email.trim(),
     phone: form.phone.trim() ? form.phone.trim() : null,
-    dateOfBirth: form.dateOfBirth,
+    // convert local datetime input to RFC3339 / ISO 8601 with Z
+    // convert date-only (YYYY-MM-DD) to RFC3339 midnight UTC (e.g. 2017-07-21T00:00:00Z)
+    dateOfBirth: (function toIso(d: string) {
+      if (!d) return '';
+      const m = d.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+      if (!m) return '';
+      const y = Number(m[1]);
+      const mo = Number(m[2]);
+      const day = Number(m[3]);
+      return new Date(Date.UTC(y, mo - 1, day)).toISOString();
+    })(form.dateOfBirth),
     memberType: 1,
     membershipPlan: form.membershipPlan === 'Monthly' ? 1 : form.membershipPlan === 'Quarterly' ? 2 : 3,
     gender: form.gender === 'Female' ? 2 : 1,
@@ -402,7 +424,7 @@ export default function Members() {
                     <div>
                       <label className="mb-2 block text-xs font-medium text-gray-900 sm:text-sm">Date of Birth <span className="text-red-500">*</span></label>
                       <input type="date" value={form.dateOfBirth} onChange={(event) => updateField('dateOfBirth', event.target.value)} className="w-full rounded-lg border border-gray-200 px-4 py-2.5 text-sm outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100" />
-                      {fieldErrors.dateOfBirth ? <p className="mt-2 text-[11px] text-red-600 sm:text-xs">{fieldErrors.dateOfBirth}</p> : null}
+                      {fieldErrors.dateOfBirth ? <p className="mt-2 text-[11px] text-red-600 sm:text-xs">{fieldErrors.dateOfBirth}</p> : <p className="mt-2 text-[11px] text-gray-500 sm:text-xs">Will be sent as RFC3339 date at midnight UTC (e.g. 2017-07-21T00:00:00Z).</p>}
                     </div>
                     <div>
                       <label className="mb-2 block text-xs font-medium text-gray-900 sm:text-sm">Gender <span className="text-red-500">*</span></label>
