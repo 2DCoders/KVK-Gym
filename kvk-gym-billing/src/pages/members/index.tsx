@@ -125,6 +125,7 @@ export default function Members() {
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
   const [openAction, setOpenAction] = useState<{ id: string; top: number; left: number } | null>(null);
+  const [searchTerm, setSearchTerm] = useState('');
 
   // Helper functions
   const calculateAge = (dateOfBirth: string): string => {
@@ -149,39 +150,39 @@ export default function Members() {
 
   // Fetch members on component mount
   useEffect(() => {
-    const fetchMembers = async () => {
-      setIsLoadingMembers(true);
-      try {
-        const apiMembers: ApiMember[] = await getMembers();
-        
-        // Filter members to only show those with membershipNumber starting with "GYM-MEM"
-        const filteredApiMembers = apiMembers.filter((member) =>
-          member.membershipNumber.startsWith('GYM-MEM')
-        );
-        
-        // Map API response to table format
-        const mappedMembers: TableMember[] = filteredApiMembers.map((member) => ({
-          id: member.id,
-          name: `${member.firstName} ${member.lastName}`,
-          pid: member.membershipNumber,
-          age: calculateAge(member.dateOfBirth),
-          gender: Number(member.gender) === 1 ? "Male" : "Female",
-          phone: member.phoneNumber ? `+94${member.phoneNumber}` : 'N/A',
-          status: mapMembershipStatusToTabStatus(member.membershipStatus),
-        }));
-        
-        setMembers(mappedMembers);
-        setMembersError('');
-      } catch (error) {
-        setMembersError('Failed to load members. Please try again later.');
-        setMembers([]);
-      } finally {
-        setIsLoadingMembers(false);
-      }
-    };
-
     fetchMembers();
   }, []);
+
+  const fetchMembers = async () => {
+    setIsLoadingMembers(true);
+    try {
+      const apiMembers: ApiMember[] = await getMembers();
+
+      // Filter members to only show those with membershipNumber starting with "GYM-MEM"
+      const filteredApiMembers = apiMembers.filter((member) =>
+        member.membershipNumber.startsWith('GYM-MEM')
+      );
+
+      // Map API response to table format
+      const mappedMembers: TableMember[] = filteredApiMembers.map((member) => ({
+        id: member.id,
+        name: `${member.firstName} ${member.lastName}`,
+        pid: member.membershipNumber,
+        age: calculateAge(member.dateOfBirth),
+        gender: Number(member.gender) === 1 ? "Male" : "Female",
+        phone: member.phoneNumber ? `+94${member.phoneNumber}` : 'N/A',
+        status: mapMembershipStatusToTabStatus(member.membershipStatus),
+      }));
+
+      setMembers(mappedMembers);
+      setMembersError('');
+    } catch (error) {
+      setMembersError('Failed to load members. Please try again later.');
+      setMembers([]);
+    } finally {
+      setIsLoadingMembers(false);
+    }
+  };
 
   useEffect(() => {
     const handleDoc = () => setOpenAction(null);
@@ -189,7 +190,28 @@ export default function Members() {
     return () => document.removeEventListener('mousedown', handleDoc);
   }, [openAction]);
 
-  const filteredMembers = members.filter((member) => member.status === activeTab);
+  useEffect(() => {
+    setPage(1);
+  }, [searchTerm]);
+
+  const filteredMembers = members.filter((member) => {
+    if (member.status !== activeTab) return false;
+
+    const query = searchTerm.trim().toLowerCase();
+    if (!query) return true;
+
+    const statusLabel =
+      member.status === 'approved'
+        ? 'active'
+        : member.status === 'pending'
+          ? 'inactive'
+          : 'blocked';
+
+    return [member.name, member.pid, member.phone, statusLabel]
+      .join(' ')
+      .toLowerCase()
+      .includes(query);
+  });
   const total = filteredMembers.length;
   const totalPages = Math.max(1, Math.ceil(total / pageSize));
   const start = (page - 1) * pageSize;
@@ -274,6 +296,7 @@ export default function Members() {
       });
     } finally {
       setIsRegistering(false);
+      fetchMembers();
     }
   };
 
@@ -299,7 +322,12 @@ export default function Members() {
           <div className="w-full max-w-md">
             <div className="flex items-center gap-2 bg-white border border-gray-200 rounded-md px-3 py-2 text-sm shadow-sm">
               <Search size={16} className="text-gray-400" />
-              <input className="w-full outline-none text-sm" placeholder="Search by name, phone, or member ID..." />
+              <input
+                value={searchTerm}
+                onChange={(event) => setSearchTerm(event.target.value)}
+                className="w-full outline-none text-sm"
+                placeholder="Search by name, phone, member ID, or status..."
+              />
             </div>
           </div>
 
@@ -379,62 +407,61 @@ export default function Members() {
                     </tr>
                   ) : (
                     pageItems.map((p) => (
-                    <tr key={p.id} className="border-b border-gray-100 hover:bg-gray-50">
-                      <td className="py-2 px-3 align-top">
-                        <div className="flex items-center gap-3">
-                          <div className="w-8 h-8 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center text-sm font-semibold">{p.name.split(' ').map(n => n[0]).slice(0, 2).join('')}</div>
-                          <div>
-                            <div className="text-sm font-medium text-gray-900">{p.name}</div>
-                            <div className="text-xs text-blue-600">{p.pid}</div>
+                      <tr key={p.id} className="border-b border-gray-100 hover:bg-gray-50">
+                        <td className="py-2 px-3 align-top">
+                          <div className="flex items-center gap-3">
+                            <div className="w-8 h-8 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center text-sm font-semibold">{p.name.split(' ').map(n => n[0]).slice(0, 2).join('')}</div>
+                            <div>
+                              <div className="text-sm font-medium text-gray-900">{p.name}</div>
+                              <div className="text-xs text-blue-600">{p.pid}</div>
+                            </div>
                           </div>
-                        </div>
-                      </td>
-                      <td className="py-2 px-3 align-top text-gray-700">{p.age}</td>
-                      <td className="py-2 px-3 align-top"><span className="px-2 py-0.5 rounded-full bg-gray-100 text-gray-700 text-xs">{p.gender}</span></td>
-                      <td className="py-2 px-3 align-top text-gray-700">{p.phone}</td>
-                      <td className="py-2 px-3 align-top">
-                        <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${
-                          p.status === 'approved'
-                            ? 'bg-emerald-100 text-emerald-700'
-                            : p.status === 'pending'
-                              ? 'bg-amber-100 text-amber-700'
-                              : 'bg-red-100 text-red-700'
-                        }`}>
-                          {p.status === 'approved' ? 'Active' : p.status === 'pending' ? 'Inactive' : 'Blocked'}
-                        </span>
-                      </td>
-                      <td className="py-2 px-3 align-top text-gray-500">
-                        <div className="relative inline-block">
-                          <button onClick={(e) => {
-                            e.stopPropagation();
-                            const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
-                            const menuWidth = 144; // w-36
-                            let left = rect.right - menuWidth;
-                            left = Math.max(8, Math.min(left, window.innerWidth - menuWidth - 8));
-                            const top = rect.bottom + 8;
-                            setOpenAction(openAction && openAction.id === p.id ? null : { id: p.id, top, left });
-                          }} className="p-1.5 rounded-full hover:bg-gray-100 transition cursor-pointer">
-                            <MoreVertical size={14} />
-                          </button>
-                        </div>
+                        </td>
+                        <td className="py-2 px-3 align-top text-gray-700">{p.age}</td>
+                        <td className="py-2 px-3 align-top"><span className="px-2 py-0.5 rounded-full bg-gray-100 text-gray-700 text-xs">{p.gender}</span></td>
+                        <td className="py-2 px-3 align-top text-gray-700">{p.phone}</td>
+                        <td className="py-2 px-3 align-top">
+                          <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${p.status === 'approved'
+                              ? 'bg-emerald-100 text-emerald-700'
+                              : p.status === 'pending'
+                                ? 'bg-amber-100 text-amber-700'
+                                : 'bg-red-100 text-red-700'
+                            }`}>
+                            {p.status === 'approved' ? 'Active' : p.status === 'pending' ? 'Inactive' : 'Blocked'}
+                          </span>
+                        </td>
+                        <td className="py-2 px-3 align-top text-gray-500">
+                          <div className="relative inline-block">
+                            <button onClick={(e) => {
+                              e.stopPropagation();
+                              const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+                              const menuWidth = 144; // w-36
+                              let left = rect.right - menuWidth;
+                              left = Math.max(8, Math.min(left, window.innerWidth - menuWidth - 8));
+                              const top = rect.bottom + 8;
+                              setOpenAction(openAction && openAction.id === p.id ? null : { id: p.id, top, left });
+                            }} className="p-1.5 rounded-full hover:bg-gray-100 transition cursor-pointer">
+                              <MoreVertical size={14} />
+                            </button>
+                          </div>
 
-                        {openAction && openAction.id === p.id && createPortal(
-                          <div style={{ position: 'fixed', top: openAction.top, left: openAction.left, width: 144 }} onMouseDown={(e) => e.stopPropagation()} className="rounded-md bg-white border shadow-lg z-50">
-                            <button onClick={() => { setOpenAction(null); alert(`View ${p.name}`); }} className="flex items-center gap-2 w-full px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 cursor-pointer">
-                              <Eye size={14} /> View
-                            </button>
-                            <button onClick={() => { setOpenAction(null); alert(`Edit ${p.name}`); }} className="flex items-center gap-2 w-full px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 cursor-pointer">
-                              <Edit size={14} /> Edit
-                            </button>
-                            <button onClick={() => { setOpenAction(null); if (confirm(`Delete ${p.name}?`)) { alert(`${p.name} deleted`); } }} className="flex items-center gap-2 w-full px-3 py-2 text-sm text-red-600 hover:bg-gray-50 cursor-pointer">
-                              <Trash2 size={14} /> Delete
-                            </button>
-                          </div>,
-                          document.body,
-                        )}
-                      </td>
-                    </tr>
-                  ))
+                          {openAction && openAction.id === p.id && createPortal(
+                            <div style={{ position: 'fixed', top: openAction.top, left: openAction.left, width: 144 }} onMouseDown={(e) => e.stopPropagation()} className="rounded-md bg-white border shadow-lg z-50">
+                              <button onClick={() => { setOpenAction(null); alert(`View ${p.name}`); }} className="flex items-center gap-2 w-full px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 cursor-pointer">
+                                <Eye size={14} /> View
+                              </button>
+                              <button onClick={() => { setOpenAction(null); alert(`Edit ${p.name}`); }} className="flex items-center gap-2 w-full px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 cursor-pointer">
+                                <Edit size={14} /> Edit
+                              </button>
+                              <button onClick={() => { setOpenAction(null); if (confirm(`Delete ${p.name}?`)) { alert(`${p.name} deleted`); } }} className="flex items-center gap-2 w-full px-3 py-2 text-sm text-red-600 hover:bg-gray-50 cursor-pointer">
+                                <Trash2 size={14} /> Delete
+                              </button>
+                            </div>,
+                            document.body,
+                          )}
+                        </td>
+                      </tr>
+                    ))
                   )}
                 </tbody>
               </table>
