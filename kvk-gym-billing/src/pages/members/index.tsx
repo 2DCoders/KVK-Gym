@@ -1,6 +1,8 @@
 import { createPortal } from 'react-dom';
 import { useEffect, useState } from 'react';
-import { ArrowLeft, ArrowRight, Fingerprint, MoreVertical, Plus, Search, UserRound, X, Eye, Edit, Trash2 } from 'lucide-react';
+import { ArrowLeft, ArrowRight, Fingerprint, Loader2, MoreVertical, Plus, Search, UserRound, X, Eye, Edit, Trash2 } from 'lucide-react';
+import { registerMember } from '@/services/members-api';
+import Alert from '@/components/ui/alert';
 
 type MemberStatus = 'approved' | 'pending' | 'blocked';
 type MemberForm = {
@@ -12,6 +14,67 @@ type MemberForm = {
   nic: string;
   email: string;
   membershipPlan: string;
+};
+
+type MemberRegistrationPayload = {
+  firstName: string;
+  lastName: string;
+  email: string;
+  phone: string | null;
+  dateOfBirth: string;
+  memberType: number;
+  membershipPlan: number;
+  gender: number;
+  deviceFingerprintId1: string | null;
+  deviceFingerprintId2: string | null;
+};
+
+type MemberFieldErrors = Partial<Record<keyof MemberForm, string>>;
+
+const sriLankanMobileRegex = /^7\d{8}$/;
+const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const nicRegex = /^(\d{9}[VXvx]|\d{12})$/;
+
+const validateMemberForm = (form: MemberForm): MemberFieldErrors => {
+  const errors: MemberFieldErrors = {};
+
+  if (!form.firstName.trim()) {
+    errors.firstName = 'First name is required.';
+  }
+
+  if (!form.lastName.trim()) {
+    errors.lastName = 'Last name is required.';
+  }
+
+  if (!form.dateOfBirth) {
+    errors.dateOfBirth = 'Date of birth is required.';
+  }
+
+  const phone = form.phone.trim().replace(/[\s-]/g, '');
+  if (!sriLankanMobileRegex.test(phone)) {
+    errors.phone = 'Enter a valid Sri Lankan mobile number without +94 (e.g. 712345678).';
+  }
+
+  if (!emailRegex.test(form.email.trim())) {
+    errors.email = 'Enter a valid email address.';
+  }
+
+  if (!nicRegex.test(form.nic.trim())) {
+    errors.nic = 'Enter a valid NIC number (9 digits + V/X, or 12 digits).';
+  }
+
+  return errors;
+};
+
+const initialMemberForm: MemberForm = {
+  firstName: '',
+  lastName: '',
+  dateOfBirth: '',
+  gender: 'Male',
+  phone: '',
+  nic: '',
+  email: '',
+  membershipPlan: 'Monthly',
 };
 
 export default function Members() {
@@ -27,16 +90,12 @@ export default function Members() {
   const [activeTab, setActiveTab] = useState<MemberStatus>('approved');
   const [isNewMemberOpen, setIsNewMemberOpen] = useState(false);
   const [memberStep, setMemberStep] = useState(1);
-  const [form, setForm] = useState<MemberForm>({
-    firstName: '',
-    lastName: '',
-    dateOfBirth: '',
-    gender: 'Male',
-    phone: '',
-    nic: '',
-    email: '',
-    membershipPlan: 'Monthly',
-  });
+  const [form, setForm] = useState<MemberForm>(initialMemberForm);
+  const [fieldErrors, setFieldErrors] = useState<MemberFieldErrors>({});
+  const [submitError, setSubmitError] = useState('');
+  const [isRegistering, setIsRegistering] = useState(false);
+  const [pageAlert, setPageAlert] = useState<{ visible: boolean; variant?: 'success' | 'error' | 'warning' | 'info'; title?: string; description?: string }>({ visible: false });
+
 
   // pagination state
   const [page, setPage] = useState(1);
@@ -61,6 +120,9 @@ export default function Members() {
   ] as const;
 
   const openNewMemberModal = () => {
+    setForm(initialMemberForm);
+    setFieldErrors({});
+    setSubmitError('');
     setMemberStep(1);
     setIsNewMemberOpen(true);
   };
@@ -68,13 +130,61 @@ export default function Members() {
   const closeNewMemberModal = () => {
     setIsNewMemberOpen(false);
     setMemberStep(1);
+    setFieldErrors({});
+    setSubmitError('');
+    setIsRegistering(false);
+    setForm(initialMemberForm);
   };
 
   const updateField = (field: keyof MemberForm, value: string) => {
     setForm((current) => ({ ...current, [field]: value }));
   };
 
-  const goToNextStep = () => setMemberStep(2);
+  const buildRegistrationPayload = (): MemberRegistrationPayload => ({
+    firstName: form.firstName.trim(),
+    lastName: form.lastName.trim(),
+    email: form.email.trim(),
+    phone: form.phone.trim() ? form.phone.trim() : null,
+    dateOfBirth: form.dateOfBirth,
+    memberType: 1,
+    membershipPlan: form.membershipPlan === 'Monthly' ? 1 : form.membershipPlan === 'Quarterly' ? 2 : 3,
+    gender: form.gender === 'Female' ? 2 : 1,
+    deviceFingerprintId1: null,
+    deviceFingerprintId2: null,
+  });
+
+  const goToNextStep = async () => {
+    const validationErrors = validateMemberForm(form);
+    setFieldErrors(validationErrors);
+
+    if (Object.keys(validationErrors).length > 0) {
+      return;
+    }
+
+    setSubmitError('');
+    setIsRegistering(true);
+
+    try {
+      await registerMember(buildRegistrationPayload());
+      setPageAlert({
+        visible: true,
+        variant: 'success',
+        title: 'Member Registered',
+        description: 'The member has been successfully registered.'
+      });
+      setMemberStep(2);
+    } catch (error) {
+      setPageAlert({
+        visible: true,
+        variant: 'error',
+        title: 'Registration Failed',
+        description: 'An error occurred while registering the member. Please try again.'
+      });
+    } finally {
+      setIsRegistering(false);
+    }
+  };
+
   const goBackStep = () => setMemberStep(1);
 
   const handleFinalSubmit = () => {
@@ -83,18 +193,23 @@ export default function Members() {
 
   return (
     <div className="max-w-7xl mx-auto px-4 py-6">
+      {pageAlert.visible && (
+        <div>
+          <Alert variant={pageAlert.variant as any} title={pageAlert.title} description={pageAlert.description} onClose={() => setPageAlert((s) => ({ ...s, visible: false }))} />
+        </div>
+      )}
       <div className="space-y-4">
         <div className="flex items-start justify-between gap-4">
           <div>
             <h1 className="text-xl md:text-2xl font-semibold text-gray-900">Member Registration</h1>
             <p className="text-sm text-gray-500 mt-1">Search for returning members or register a new one</p>
           </div>
-            <div className="w-full max-w-md">
-              <div className="flex items-center gap-2 bg-white border border-gray-200 rounded-md px-3 py-2 text-sm shadow-sm">
-                <Search size={16} className="text-gray-400" />
-                <input className="w-full outline-none text-sm" placeholder="Search by name, phone, NIC, or member ID..." />
-              </div>
+          <div className="w-full max-w-md">
+            <div className="flex items-center gap-2 bg-white border border-gray-200 rounded-md px-3 py-2 text-sm shadow-sm">
+              <Search size={16} className="text-gray-400" />
+              <input className="w-full outline-none text-sm" placeholder="Search by name, phone, NIC, or member ID..." />
             </div>
+          </div>
 
           <div className="flex items-center gap-3">
             <button onClick={openNewMemberModal} className="flex items-center gap-2 px-3 py-2.5 bg-primary text-white rounded cursor-pointer bg-blue-700 transition text-sm">
@@ -149,7 +264,7 @@ export default function Members() {
                     <tr key={p.id} className="border-b border-gray-100 hover:bg-gray-50">
                       <td className="py-2 px-3 align-top">
                         <div className="flex items-center gap-3">
-                          <div className="w-8 h-8 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center text-sm font-semibold">{p.name.split(' ').map(n => n[0]).slice(0,2).join('')}</div>
+                          <div className="w-8 h-8 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center text-sm font-semibold">{p.name.split(' ').map(n => n[0]).slice(0, 2).join('')}</div>
                           <div>
                             <div className="text-sm font-medium text-gray-900">{p.name}</div>
                             <div className="text-xs text-blue-600">{p.pid}</div>
@@ -201,14 +316,14 @@ export default function Members() {
           <div className="px-4 py-3 border-t border-gray-100 bg-white flex items-center justify-between">
             <div className="text-sm text-gray-600">Showing {total === 0 ? 0 : start + 1} to {Math.min(start + pageSize, total)} of {total} entries</div>
             <div className="flex items-center gap-2">
-            <div className="flex items-center gap-3">
-              <label className="text-sm text-gray-600">Rows:</label>
-              <select value={pageSize} onChange={(e) => { setPageSize(Number(e.target.value)); setPage(1); }} className="border rounded-md px-2 py-1 text-sm">
-                <option value={5}>5</option>
-                <option value={10}>10</option>
-                <option value={25}>25</option>
-              </select>
-            </div>
+              <div className="flex items-center gap-3">
+                <label className="text-sm text-gray-600">Rows:</label>
+                <select value={pageSize} onChange={(e) => { setPageSize(Number(e.target.value)); setPage(1); }} className="border rounded-md px-2 py-1 text-sm">
+                  <option value={5}>5</option>
+                  <option value={10}>10</option>
+                  <option value={25}>25</option>
+                </select>
+              </div>
               <button onClick={() => setPage(Math.max(1, page - 1))} disabled={page === 1} className="px-3 py-1 rounded-md border bg-white text-sm disabled:opacity-50">Prev</button>
               <div className="flex items-center gap-1">
                 {Array.from({ length: totalPages }).map((_, i) => (
@@ -277,38 +392,42 @@ export default function Members() {
                     <div>
                       <label className="mb-2 block text-xs font-medium text-gray-900 sm:text-sm">First Name <span className="text-red-500">*</span></label>
                       <input value={form.firstName} onChange={(event) => updateField('firstName', event.target.value)} className="w-full rounded-lg border border-gray-200 px-4 py-2.5 text-sm outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100" placeholder="John" />
+                      {fieldErrors.firstName ? <p className="mt-2 text-[11px] text-red-600 sm:text-xs">{fieldErrors.firstName}</p> : null}
                     </div>
                     <div>
                       <label className="mb-2 block text-xs font-medium text-gray-900 sm:text-sm">Last Name <span className="text-red-500">*</span></label>
                       <input value={form.lastName} onChange={(event) => updateField('lastName', event.target.value)} className="w-full rounded-lg border border-gray-200 px-4 py-2.5 text-sm outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100" placeholder="Doe" />
+                      {fieldErrors.lastName ? <p className="mt-2 text-[11px] text-red-600 sm:text-xs">{fieldErrors.lastName}</p> : null}
                     </div>
                     <div>
                       <label className="mb-2 block text-xs font-medium text-gray-900 sm:text-sm">Date of Birth <span className="text-red-500">*</span></label>
                       <input type="date" value={form.dateOfBirth} onChange={(event) => updateField('dateOfBirth', event.target.value)} className="w-full rounded-lg border border-gray-200 px-4 py-2.5 text-sm outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100" />
+                      {fieldErrors.dateOfBirth ? <p className="mt-2 text-[11px] text-red-600 sm:text-xs">{fieldErrors.dateOfBirth}</p> : null}
                     </div>
                     <div>
                       <label className="mb-2 block text-xs font-medium text-gray-900 sm:text-sm">Gender <span className="text-red-500">*</span></label>
                       <select value={form.gender} onChange={(event) => updateField('gender', event.target.value)} className="w-full rounded-lg border border-gray-200 px-4 py-2.5 text-sm outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100">
                         <option>Male</option>
                         <option>Female</option>
-                        <option>Other</option>
                       </select>
                     </div>
                     <div>
                       <label className="mb-2 block text-xs font-medium text-gray-900 sm:text-sm">Phone No <span className="text-red-500">*</span></label>
                       <div className="flex overflow-hidden rounded-lg border border-gray-200 focus-within:border-blue-500 focus-within:ring-2 focus-within:ring-blue-100">
                         <span className="border-r border-gray-200 bg-gray-50 px-4 py-2.5 text-sm text-gray-500">+94</span>
-                        <input value={form.phone} onChange={(event) => updateField('phone', event.target.value)} className="w-full px-4 py-2.5 text-sm outline-none" placeholder="712 345 678" />
+                        <input value={form.phone} onChange={(event) => updateField('phone', event.target.value)} inputMode="numeric" maxLength={9} className="w-full px-4 py-2.5 text-sm outline-none" placeholder="712 345 678" />
                       </div>
+                      <p className={`mt-2 text-[11px] sm:text-xs ${fieldErrors.phone ? 'text-red-600' : 'text-gray-500'}`}>{fieldErrors.phone ?? 'Enter 9 digits starting with 7, without +94.'}</p>
                     </div>
                     <div>
                       <label className="mb-2 block text-xs font-medium text-gray-900 sm:text-sm">NIC No <span className="text-red-500">*</span></label>
                       <input value={form.nic} onChange={(event) => updateField('nic', event.target.value)} className="w-full rounded-lg border border-gray-200 px-4 py-2.5 text-sm outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100" placeholder="123456789V or 200012345678" />
-                      <p className="mt-2 text-[11px] text-gray-500 sm:text-xs">9 digits + V/X, or 12-digit new format.</p>
+                      <p className={`mt-2 text-[11px] sm:text-xs ${fieldErrors.nic ? 'text-red-600' : 'text-gray-500'}`}>{fieldErrors.nic ?? '9 digits + V/X, or 12-digit new format.'}</p>
                     </div>
                     <div>
                       <label className="mb-2 block text-xs font-medium text-gray-900 sm:text-sm">Email <span className="text-red-500">*</span></label>
                       <input type="email" value={form.email} onChange={(event) => updateField('email', event.target.value)} className="w-full rounded-lg border border-gray-200 px-4 py-2.5 text-sm outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100" placeholder="member@example.com" />
+                      <p className={`mt-2 text-[11px] sm:text-xs ${fieldErrors.email ? 'text-red-600' : 'text-gray-500'}`}>{fieldErrors.email ?? 'Use a valid email address.'}</p>
                     </div>
                     <div>
                       <label className="mb-2 block text-xs font-medium text-gray-900 sm:text-sm">Membership Plan <span className="text-red-500">*</span></label>
@@ -321,14 +440,19 @@ export default function Members() {
                   </div>
 
                   <div className="flex items-center justify-end gap-3 border-t border-gray-200 pt-4 mb-5.5">
-                    <button onClick={closeNewMemberModal} className="rounded-lg border border-gray-200 px-4 py-2 text-sm font-medium text-gray-700 transition hover:bg-gray-50">
+                    <button onClick={closeNewMemberModal} className="rounded-lg cursor-pointer border border-gray-200 px-4 py-2 text-sm font-medium text-gray-700 transition hover:bg-gray-50">
                       Cancel
                     </button>
-                    <button onClick={goToNextStep} className="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-blue-700">
-                      Submit & Next
-                      <ArrowRight size={16} />
+                    <button onClick={goToNextStep} disabled={isRegistering} className="inline-flex cursor-pointer items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-blue-400">
+                      {isRegistering ? <Loader2 size={16} className="animate-spin" /> : <ArrowRight size={16} />}
+                      {isRegistering ? 'Registering...' : 'Submit & Next'}
                     </button>
                   </div>
+                  {submitError ? (
+                    <div className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+                      {submitError}
+                    </div>
+                  ) : null}
                 </div>
               ) : (
                 <div className="space-y-5">
@@ -420,6 +544,7 @@ export default function Members() {
         </div>,
         document.body,
       )}
+
     </div>
   );
 }

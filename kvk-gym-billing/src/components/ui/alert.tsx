@@ -60,7 +60,7 @@ export function Alert({
   }
 
   return (
-    <div className="fixed right-4 top-4 z-9999 w-[calc(100vw-2rem)] max-w-sm pointer-events-none sm:right-6 sm:top-6" role="presentation">
+    <div className="fixed right-4 top-4 z-9999999 w-[calc(100vw-2rem)] max-w-sm pointer-events-none sm:right-6 sm:top-6" role="presentation">
       <style>
         {`@keyframes alert-slide-in {
           0% { opacity: 0; transform: translateX(24px) scale(0.98); }
