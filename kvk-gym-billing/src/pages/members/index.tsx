@@ -1,7 +1,7 @@
 import { createPortal } from 'react-dom';
 import { useEffect, useState } from 'react';
 import { ArrowLeft, ArrowRight, CreditCard, Fingerprint, Loader2, MoreVertical, Plus, Search, UserRound, X, Eye, Edit, Trash2 } from 'lucide-react';
-import { registerMember, getMemberById, getMembers } from '@/services/members-api';
+import { registerMember, getMemberById, getMembers, updateMember } from '@/services/members-api';
 import { fingerPrintSave } from '@/services/fingerprint-api';
 import { processPayment } from '@/services/payment-api';
 import { getMembershipPlans } from '@/services/membership-plans-api';
@@ -85,6 +85,8 @@ type MembershipPlan = {
 
 type MemberFieldErrors = Partial<Record<keyof MemberForm, string>>;
 
+type MemberEditForm = MemberForm;
+
 const sriLankanMobileRegex = /^7\d{8}$/;
 const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -141,6 +143,8 @@ const initialMemberForm: MemberForm = {
   membershipPlan: '',
 };
 
+const initialMemberEditForm: MemberEditForm = { ...initialMemberForm };
+
 export default function Members() {
   const [members, setMembers] = useState<TableMember[]>([]);
   const [isLoadingMembers, setIsLoadingMembers] = useState(true);
@@ -171,6 +175,13 @@ export default function Members() {
   const [fingerprintId2, setFingerprintId2] = useState('DUMMY_FINGERPRINT_2');
   const [fingerprintSaveLoading, setFingerprintSaveLoading] = useState(false);
   const [isSubmittingFingerprint, setIsSubmittingFingerprint] = useState(false);
+  const [isEditMemberOpen, setIsEditMemberOpen] = useState(false);
+  const [editMemberId, setEditMemberId] = useState<string | null>(null);
+  const [editForm, setEditForm] = useState<MemberEditForm>(initialMemberEditForm);
+  const [editFieldErrors, setEditFieldErrors] = useState<MemberFieldErrors>({});
+  const [isSavingMemberEdit, setIsSavingMemberEdit] = useState(false);
+  const [isLoadingEditMember, setIsLoadingEditMember] = useState(false);
+  const [editMemberError, setEditMemberError] = useState('');
 
   // pagination state
   const [page, setPage] = useState(1);
@@ -230,6 +241,27 @@ export default function Members() {
     const month = String(date.getMonth() + 1).padStart(2, '0');
     const year = date.getFullYear();
     return `${day}/${month}/${year}`;
+  };
+
+  const formatDateInputValue = (value: string) => {
+    if (!value) return '';
+
+    if (/^\d{4}-\d{2}-\d{2}$/.test(value)) {
+      return value;
+    }
+
+    if (/^\d{2}\/\d{2}\/\d{4}$/.test(value)) {
+      const [day, month, year] = value.split('/');
+      return `${year}-${month}-${day}`;
+    }
+
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return '';
+
+    const day = String(date.getDate()).padStart(2, '0');
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const year = date.getFullYear();
+    return `${year}-${month}-${day}`;
   };
 
   // Fetch members on component mount
@@ -337,6 +369,7 @@ export default function Members() {
   const start = (page - 1) * pageSize;
   const pageItems = filteredMembers.slice(start, start + pageSize);
   const selectedMembershipPlan = membershipPlans.find((plan) => plan.id === form.membershipPlan);
+  const selectedEditMembershipPlan = membershipPlans.find((plan) => plan.id === editForm.membershipPlan);
 
   const tabs = [
     { key: 'approved', label: 'Approved Members' },
@@ -547,6 +580,119 @@ export default function Members() {
     setIsFingerprintModalOpen(false);
     setFingerprintId1('DUMMY_FINGERPRINT_1');
     setFingerprintId2('DUMMY_FINGERPRINT_2');
+  };
+
+  const openEditMemberModal = async (memberId: string) => {
+    setOpenAction(null);
+    setIsEditMemberOpen(true);
+    setIsLoadingEditMember(true);
+    setEditMemberError('');
+    setEditFieldErrors({});
+    setEditMemberId(memberId);
+
+    try {
+      const response = await getMemberById(memberId);
+      const member = response?.additionalData?.response ?? response?.response ?? null;
+
+      if (!member) {
+        setEditMemberError('Unable to load member details for editing.');
+        return;
+      }
+
+      const memberDetails = member as MemberDetails;
+      setEditForm({
+        firstName: memberDetails.firstName ?? '',
+        lastName: memberDetails.lastName ?? '',
+        dateOfBirth: formatDateInputValue(memberDetails.dateOfBirth),
+        gender: Number(memberDetails.gender) === 2 ? 'Female' : 'Male',
+        phone: memberDetails.phoneNumber ?? '',
+        email: memberDetails.email ?? '',
+        membershipPlan: memberDetails.membershipPlanId ?? '',
+      });
+    } catch {
+      setEditMemberError('Failed to load member details. Please try again.');
+    } finally {
+      setIsLoadingEditMember(false);
+    }
+  };
+
+  const closeEditMemberModal = () => {
+    setIsEditMemberOpen(false);
+    setEditMemberId(null);
+    setEditForm(initialMemberEditForm);
+    setEditFieldErrors({});
+    setEditMemberError('');
+    setIsSavingMemberEdit(false);
+  };
+
+  const updateEditField = (field: keyof MemberEditForm, value: string) => {
+    setEditForm((current) => ({ ...current, [field]: value }));
+  };
+
+  const buildEditPayload = () => ({
+    firstName: editForm.firstName.trim(),
+    lastName: editForm.lastName.trim(),
+    email: editForm.email.trim(),
+    phone: editForm.phone.trim() ? editForm.phone.trim() : null,
+    dateOfBirth: (function toIso(d: string) {
+      if (!d) return '';
+      const m = d.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+      if (!m) return '';
+      const y = Number(m[1]);
+      const mo = Number(m[2]);
+      const day = Number(m[3]);
+      return new Date(Date.UTC(y, mo - 1, day)).toISOString();
+    })(editForm.dateOfBirth),
+    memberType: 1,
+    MembershipPlanId: editForm.membershipPlan,
+    gender: editForm.gender === 'Female' ? 2 : 1,
+    deviceFingerprintId1: null,
+    deviceFingerprintId2: null,
+  });
+
+  const handleSaveMemberEdit = async () => {
+    if (!editMemberId) return;
+
+    const validationErrors = validateMemberForm(editForm);
+    setEditFieldErrors(validationErrors);
+
+    if (Object.keys(validationErrors).length > 0) {
+      return;
+    }
+
+    setIsSavingMemberEdit(true);
+    try {
+      await updateMember(editMemberId, buildEditPayload());
+
+      setPageAlert({
+        visible: true,
+        variant: 'success',
+        title: 'Member Updated',
+        description: 'The member details have been updated successfully.',
+      });
+
+      await fetchMembers();
+
+      try {
+        const response = await getMemberById(editMemberId);
+        const member = response?.additionalData?.response ?? response?.response ?? null;
+        if (member) setSelectedMemberDetails(member as MemberDetails);
+      } catch {
+        // ignore refresh error
+      }
+
+      closeEditMemberModal();
+    } catch (error: any) {
+      const message = error?.response?.data?.message || error?.message || 'Failed to update member details.';
+      setPageAlert({
+        visible: true,
+        variant: 'error',
+        title: 'Update Failed',
+        description: message,
+      });
+    } finally {
+      setIsSavingMemberEdit(false);
+    }
   };
 
   const handleSaveFingerprints = async () => {
@@ -785,7 +931,7 @@ export default function Members() {
                               <button onClick={() => openViewMemberModal(p.id)} className="flex items-center gap-2 w-full px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 cursor-pointer">
                                 <Eye size={14} /> View
                               </button>
-                              <button onClick={() => { setOpenAction(null); alert(`Edit ${p.name}`); }} className="flex items-center gap-2 w-full px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 cursor-pointer">
+                              <button onClick={() => openEditMemberModal(p.id)} className="flex items-center gap-2 w-full px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 cursor-pointer">
                                 <Edit size={14} /> Edit
                               </button>
                               <button onClick={() => { setOpenAction(null); if (confirm(`Delete ${p.name}?`)) { alert(`${p.name} deleted`); } }} className="flex items-center gap-2 w-full px-3 py-2 text-sm text-red-600 hover:bg-gray-50 cursor-pointer">
@@ -1357,6 +1503,146 @@ export default function Members() {
                   </button>
                 </div>
               </div>
+            </div>
+          </div>
+        </div>,
+        document.body,
+      )}
+
+      {isEditMemberOpen && createPortal(
+        <div className="fixed inset-0 z-[96] flex items-center justify-center bg-black/60 px-3 py-4 sm:px-4 sm:py-6">
+          <div className="max-h-[92vh] w-full max-w-4xl overflow-hidden rounded-2xl bg-white shadow-2xl">
+            <div className="flex items-start justify-between border-b border-gray-200 px-5 py-4">
+              <div>
+                <h2 className="text-xl font-semibold text-gray-900 sm:text-2xl">Edit Member</h2>
+                <p className="mt-1 text-sm text-gray-500">Update member details and choose a membership plan.</p>
+              </div>
+              <button onClick={closeEditMemberModal} className="rounded-full p-2 cursor-pointer text-gray-500 transition hover:bg-gray-100 hover:text-gray-900">
+                <X size={18} />
+              </button>
+            </div>
+
+            <div className="max-h-[calc(92vh-88px)] overflow-y-auto px-5 py-5 sm:px-6 sm:py-6">
+              {isLoadingEditMember ? (
+                <div className="flex min-h-[280px] items-center justify-center gap-3">
+                  <Loader2 size={20} className="animate-spin text-blue-600" />
+                  <span className="text-sm text-gray-600">Loading member details...</span>
+                </div>
+              ) : editMemberError ? (
+                <div className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+                  {editMemberError}
+                </div>
+              ) : (
+                <div className="space-y-5">
+                  <div className="flex items-start gap-3 rounded-2xl border border-gray-200 bg-gray-50 px-4 py-4">
+                    <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-blue-100 text-blue-600">
+                      <UserRound size={20} />
+                    </div>
+                    <div>
+                      <h3 className="text-base font-semibold text-gray-900 sm:text-md">Member Details</h3>
+                      <p className="text-sm text-gray-500">Editable profile fields for this member.</p>
+                    </div>
+                  </div>
+
+                  <div className="grid gap-3 md:grid-cols-2 lg:gap-4">
+                    <div>
+                      <label className="mb-2 block text-xs font-medium text-gray-900 sm:text-sm">First Name <span className="text-red-500">*</span></label>
+                      <input value={editForm.firstName} onChange={(event) => updateEditField('firstName', event.target.value)} className="w-full rounded-lg border border-gray-200 px-4 py-2.5 text-sm outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100" placeholder="John" />
+                      {editFieldErrors.firstName ? <p className="mt-2 text-[11px] text-red-600 sm:text-xs">{editFieldErrors.firstName}</p> : null}
+                    </div>
+                    <div>
+                      <label className="mb-2 block text-xs font-medium text-gray-900 sm:text-sm">Last Name <span className="text-red-500">*</span></label>
+                      <input value={editForm.lastName} onChange={(event) => updateEditField('lastName', event.target.value)} className="w-full rounded-lg border border-gray-200 px-4 py-2.5 text-sm outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100" placeholder="Doe" />
+                      {editFieldErrors.lastName ? <p className="mt-2 text-[11px] text-red-600 sm:text-xs">{editFieldErrors.lastName}</p> : null}
+                    </div>
+                    <div>
+                      <label className="mb-2 block text-xs font-medium text-gray-900 sm:text-sm">Date of Birth <span className="text-red-500">*</span></label>
+                      <input type="date" value={editForm.dateOfBirth} onChange={(event) => updateEditField('dateOfBirth', event.target.value)} className="w-full rounded-lg border border-gray-200 px-4 py-2.5 text-sm outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100" />
+                      {editFieldErrors.dateOfBirth ? <p className="mt-2 text-[11px] text-red-600 sm:text-xs">{editFieldErrors.dateOfBirth}</p> : null}
+                    </div>
+                    <div>
+                      <label className="mb-2 block text-xs font-medium text-gray-900 sm:text-sm">Gender <span className="text-red-500">*</span></label>
+                      <select value={editForm.gender} onChange={(event) => updateEditField('gender', event.target.value)} className="w-full rounded-lg border border-gray-200 px-4 py-2.5 text-sm outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100">
+                        <option>Male</option>
+                        <option>Female</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="mb-2 block text-xs font-medium text-gray-900 sm:text-sm">Phone No <span className="text-red-500">*</span></label>
+                      <div className="flex overflow-hidden rounded-lg border border-gray-200 focus-within:border-blue-500 focus-within:ring-2 focus-within:ring-blue-100">
+                        <span className="border-r border-gray-200 bg-gray-50 px-4 py-2.5 text-sm text-gray-500">+94</span>
+                        <input value={editForm.phone} onChange={(event) => updateEditField('phone', event.target.value)} inputMode="numeric" maxLength={9} className="w-full px-4 py-2.5 text-sm outline-none" placeholder="712 345 678" />
+                      </div>
+                      <p className={`mt-2 text-[11px] sm:text-xs ${editFieldErrors.phone ? 'text-red-600' : 'text-gray-500'}`}>{editFieldErrors.phone ?? 'Enter 9 digits starting with 7, without +94.'}</p>
+                    </div>
+                    <div>
+                      <label className="mb-2 block text-xs font-medium text-gray-900 sm:text-sm">Email <span className="text-red-500">*</span></label>
+                      <input type="email" value={editForm.email} onChange={(event) => updateEditField('email', event.target.value)} className="w-full rounded-lg border border-gray-200 px-4 py-2.5 text-sm outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100" placeholder="member@example.com" />
+                      <p className={`mt-2 text-[11px] sm:text-xs ${editFieldErrors.email ? 'text-red-600' : 'text-gray-500'}`}>{editFieldErrors.email ?? 'Use a valid email address.'}</p>
+                    </div>
+                  </div>
+
+                  <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
+                    <div className="flex items-start justify-between gap-4">
+                      <div>
+                        <h4 className="text-sm font-semibold uppercase tracking-wide text-gray-500">Member Payment Plan</h4>
+                        <p className="mt-1 text-sm text-gray-500">Select another plan if needed.</p>
+                      </div>
+                      {selectedEditMembershipPlan ? (
+                        <span className="inline-flex items-center rounded-full bg-blue-50 px-2.5 py-1 text-xs font-medium text-blue-700">
+                          Current: LKR {selectedEditMembershipPlan.price.toLocaleString()}
+                        </span>
+                      ) : null}
+                    </div>
+
+                    <div className="mt-4 grid gap-4 md:grid-cols-2">
+                      <div>
+                        <label className="mb-2 block text-xs font-medium text-gray-900 sm:text-sm">Membership Plan <span className="text-red-500">*</span></label>
+                        <select
+                          value={editForm.membershipPlan}
+                          onChange={(event) => updateEditField('membershipPlan', event.target.value)}
+                          disabled={isLoadingPlans || membershipPlans.length === 0}
+                          className="w-full rounded-lg border border-gray-200 px-4 py-2.5 text-sm outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100 disabled:bg-gray-100"
+                        >
+                          <option value="">{isLoadingPlans ? 'Loading plans...' : 'Select a plan'}</option>
+                          {membershipPlans.map((plan) => (
+                            <option key={plan.id} value={plan.id}>
+                              {plan.title} - LKR {plan.price.toLocaleString()}
+                            </option>
+                          ))}
+                        </select>
+                        {plansError ? <p className="mt-2 text-[11px] text-red-600 sm:text-xs">{plansError}</p> : null}
+                        {editFieldErrors.membershipPlan ? <p className="mt-2 text-[11px] text-red-600 sm:text-xs">{editFieldErrors.membershipPlan}</p> : null}
+                      </div>
+
+                      <div className="rounded-2xl border border-gray-200 bg-gray-50 px-4 py-4">
+                        <div className="flex items-center justify-between gap-4">
+                          <span className="text-sm font-medium text-gray-600">Selected Plan</span>
+                          <span className="text-sm font-semibold text-gray-900">
+                            {selectedEditMembershipPlan ? selectedEditMembershipPlan.title : 'No plan selected'}
+                          </span>
+                        </div>
+                        <div className="mt-2 flex items-center justify-between gap-4">
+                          <span className="text-sm font-medium text-gray-600">Price</span>
+                          <span className="text-base font-semibold text-gray-900">
+                            LKR {Number(selectedEditMembershipPlan?.price || 0).toLocaleString()}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center justify-end gap-3 border-t border-gray-200 pt-4">
+                    <button onClick={closeEditMemberModal} className="rounded-lg border border-gray-200 px-4 py-2 text-sm font-medium text-gray-700 transition hover:bg-gray-50 cursor-pointer">
+                      Cancel
+                    </button>
+                    <button onClick={handleSaveMemberEdit} disabled={isSavingMemberEdit} className="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-5 py-2 text-sm font-medium text-white transition hover:bg-blue-700 cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed">
+                      {isSavingMemberEdit ? <Loader2 size={16} className="animate-spin" /> : <ArrowRight size={16} />}
+                      {isSavingMemberEdit ? 'Saving...' : 'Save Changes'}
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         </div>,

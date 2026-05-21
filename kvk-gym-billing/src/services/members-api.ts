@@ -50,3 +50,16 @@ export const getMemberById = async (memberId: string) => {
     throw error;
   }
 };
+
+export const updateMember = async (memberId: string, memberData: any) => {
+  try {
+    const response = await axios.put(`${MEMBERS_API_URL}${memberId}/`, memberData, {
+      headers: {
+        Authorization: `Bearer ${getToken()}`,
+      },
+    });
+    return response.data;
+  } catch (error) {
+    throw error;
+  }
+};
