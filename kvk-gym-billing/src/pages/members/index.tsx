@@ -2,6 +2,7 @@ import { createPortal } from 'react-dom';
 import { useEffect, useState } from 'react';
 import { ArrowLeft, ArrowRight, Fingerprint, Loader2, MoreVertical, Plus, Search, UserRound, X, Eye, Edit, Trash2 } from 'lucide-react';
 import { registerMember, getMembers } from '@/services/members-api';
+import { getMembershipPlans } from '@/services/membership-plans-api';
 import Alert from '@/components/ui/alert';
 
 type MemberStatus = 'approved' | 'pending' | 'blocked';
@@ -47,10 +48,16 @@ type MemberRegistrationPayload = {
   phone: string | null;
   dateOfBirth: string;
   memberType: number;
-  membershipPlan: number;
+  membershipPlan: string;
   gender: number;
   deviceFingerprintId1: string | null;
   deviceFingerprintId2: string | null;
+};
+
+type MembershipPlan = {
+  id: string;
+  title: string;
+  price: number;
 };
 
 type MemberFieldErrors = Partial<Record<keyof MemberForm, string>>;
@@ -94,6 +101,10 @@ const validateMemberForm = (form: MemberForm): MemberFieldErrors => {
     errors.email = 'Enter a valid email address.';
   }
 
+  if (!form.membershipPlan) {
+    errors.membershipPlan = 'Select a membership plan.';
+  }
+
   return errors;
 };
 
@@ -101,16 +112,19 @@ const initialMemberForm: MemberForm = {
   firstName: '',
   lastName: '',
   dateOfBirth: '',
-  gender: '',
+  gender: 'Male',
   phone: '',
   email: '',
-  membershipPlan: 'Monthly',
+  membershipPlan: '',
 };
 
 export default function Members() {
   const [members, setMembers] = useState<TableMember[]>([]);
   const [isLoadingMembers, setIsLoadingMembers] = useState(true);
   const [membersError, setMembersError] = useState('');
+  const [membershipPlans, setMembershipPlans] = useState<MembershipPlan[]>([]);
+  const [isLoadingPlans, setIsLoadingPlans] = useState(false);
+  const [plansError, setPlansError] = useState('');
 
   const [activeTab, setActiveTab] = useState<MemberStatus>('approved');
   const [isNewMemberOpen, setIsNewMemberOpen] = useState(false);
@@ -153,6 +167,10 @@ export default function Members() {
     fetchMembers();
   }, []);
 
+  useEffect(() => {
+    fetchMembershipPlans();
+  }, []);
+
   const fetchMembers = async () => {
     setIsLoadingMembers(true);
     try {
@@ -181,6 +199,38 @@ export default function Members() {
       setMembers([]);
     } finally {
       setIsLoadingMembers(false);
+    }
+  };
+
+  const fetchMembershipPlans = async () => {
+    setIsLoadingPlans(true);
+    try {
+      const response = await getMembershipPlans();
+      const plans = response?.additionalData?.response ?? response?.response ?? response ?? [];
+
+      const mappedPlans: MembershipPlan[] = Array.isArray(plans)
+        ? plans.map((plan: any) => ({
+            id: String(plan.id),
+            title: String(plan.title ?? 'Unnamed Plan'),
+            price: Number(plan.price ?? 0),
+          }))
+        : [];
+
+      setMembershipPlans(mappedPlans);
+      setPlansError('');
+
+      setForm((current) => {
+        if (current.membershipPlan || mappedPlans.length === 0) {
+          return current;
+        }
+
+        return { ...current, membershipPlan: mappedPlans[0].id };
+      });
+    } catch (error) {
+      setPlansError('Failed to load membership plans. Please try again later.');
+      setMembershipPlans([]);
+    } finally {
+      setIsLoadingPlans(false);
     }
   };
 
@@ -216,6 +266,7 @@ export default function Members() {
   const totalPages = Math.max(1, Math.ceil(total / pageSize));
   const start = (page - 1) * pageSize;
   const pageItems = filteredMembers.slice(start, start + pageSize);
+  const selectedMembershipPlan = membershipPlans.find((plan) => plan.id === form.membershipPlan);
 
   const tabs = [
     { key: 'approved', label: 'Approved Members' },
@@ -261,7 +312,7 @@ export default function Members() {
       return new Date(Date.UTC(y, mo - 1, day)).toISOString();
     })(form.dateOfBirth),
     memberType: 1,
-    membershipPlan: form.membershipPlan === 'Monthly' ? 1 : form.membershipPlan === 'Quarterly' ? 2 : 3,
+    membershipPlan: form.membershipPlan,
     gender: form.gender === 'Female' ? 2 : 1,
     deviceFingerprintId1: null,
     deviceFingerprintId2: null,
@@ -582,11 +633,21 @@ export default function Members() {
                     </div>
                     <div>
                       <label className="mb-2 block text-xs font-medium text-gray-900 sm:text-sm">Membership Plan <span className="text-red-500">*</span></label>
-                      <select value={form.membershipPlan} onChange={(event) => updateField('membershipPlan', event.target.value)} className="w-full rounded-lg border border-gray-200 px-4 py-2.5 text-sm outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100">
-                        <option>Monthly</option>
-                        <option>Quarterly</option>
-                        <option>Annual</option>
+                      <select
+                        value={form.membershipPlan}
+                        onChange={(event) => updateField('membershipPlan', event.target.value)}
+                        disabled={isLoadingPlans || membershipPlans.length === 0}
+                        className="w-full rounded-lg border border-gray-200 px-4 py-2.5 text-sm outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100 disabled:bg-gray-100"
+                      >
+                        <option value="">{isLoadingPlans ? 'Loading plans...' : 'Select a plan'}</option>
+                        {membershipPlans.map((plan) => (
+                          <option key={plan.id} value={plan.id}>
+                            {plan.title} - LKR {plan.price.toLocaleString()}
+                          </option>
+                        ))}
                       </select>
+                      {plansError ? <p className="mt-2 text-[11px] text-red-600 sm:text-xs">{plansError}</p> : null}
+                      {fieldErrors.membershipPlan ? <p className="mt-2 text-[11px] text-red-600 sm:text-xs">{fieldErrors.membershipPlan}</p> : null}
                     </div>
                   </div>
 
@@ -659,7 +720,12 @@ export default function Members() {
                         <div className="mt-4 space-y-3 text-sm text-gray-600">
                           <div className="flex items-center justify-between gap-4"><span>Name</span><span className="font-medium text-gray-900">{form.firstName || 'John'} {form.lastName || 'Doe'}</span></div>
                           <div className="flex items-center justify-between gap-4"><span>Phone</span><span className="font-medium text-gray-900">+94 {form.phone || '712 345 678'}</span></div>
-                          <div className="flex items-center justify-between gap-4"><span>Plan</span><span className="font-medium text-gray-900">{form.membershipPlan}</span></div>
+                          <div className="flex items-center justify-between gap-4">
+                            <span>Plan</span>
+                            <span className="font-medium text-gray-900">
+                              {selectedMembershipPlan ? `${selectedMembershipPlan.title} - LKR ${selectedMembershipPlan.price.toLocaleString()}` : 'Select a plan'}
+                            </span>
+                          </div>
                         </div>
                       </div>
 
