@@ -1,7 +1,7 @@
 import { createPortal } from 'react-dom';
 import { useEffect, useState } from 'react';
 import { ArrowLeft, ArrowRight, Fingerprint, Loader2, MoreVertical, Plus, Search, UserRound, X, Eye, Edit, Trash2 } from 'lucide-react';
-import { registerMember, getMembers } from '@/services/members-api';
+import { registerMember, getMemberById, getMembers } from '@/services/members-api';
 import { getMembershipPlans } from '@/services/membership-plans-api';
 import Alert from '@/components/ui/alert';
 
@@ -29,6 +29,27 @@ type TableMember = {
   gender: string;
   phone: string;
   status: MemberStatus;
+};
+
+type MemberDetails = {
+  id: string;
+  membershipNumber: string;
+  firstName: string;
+  lastName: string;
+  email: string;
+  phoneNumber: string | null;
+  dateOfBirth: string;
+  gender: number;
+  membershipStatus: string;
+  membershipPlanId: string;
+  membershipPlanTitle: string;
+  membershipPlanPrice: number;
+  membershipStartDate: string;
+  membershipEndDate: string;
+  paymentStatus: number;
+  membershipPlanDurationInDays: number;
+  identityUserId: string | null;
+  isSavedFingerprints: boolean;
 };
 
 type MemberForm = {
@@ -134,6 +155,10 @@ export default function Members() {
   const [submitError, setSubmitError] = useState('');
   const [isRegistering, setIsRegistering] = useState(false);
   const [pageAlert, setPageAlert] = useState<{ visible: boolean; variant?: 'success' | 'error' | 'warning' | 'info'; title?: string; description?: string }>({ visible: false });
+  const [isViewMemberOpen, setIsViewMemberOpen] = useState(false);
+  const [isLoadingMemberDetails, setIsLoadingMemberDetails] = useState(false);
+  const [memberDetailsError, setMemberDetailsError] = useState('');
+  const [selectedMemberDetails, setSelectedMemberDetails] = useState<MemberDetails | null>(null);
 
   // pagination state
   const [page, setPage] = useState(1);
@@ -160,6 +185,39 @@ export default function Members() {
     if (status === 'Active') return 'approved';
     if (status === 'Inactive') return 'pending';
     return 'blocked';
+  };
+
+  const paymentStatusLabel = (status: number): string => {
+    if (status === 1) return 'Pending';
+    if (status === 2) return 'Paid';
+    if (status === 3) return 'Overdue';
+    if (status === 4) return 'Completed';
+    if (status === 5) return 'Cancelled';
+    return 'Unknown';
+  };
+
+  const formatDisplayDate = (value: string) => {
+    if (!value) return 'N/A';
+
+    // Already in dd/MM/yyyy format
+    if (/^\d{2}\/\d{2}\/\d{4}$/.test(value)) {
+      return value;
+    }
+
+    // Convert yyyy-MM-dd directly without Date parsing timezone side effects
+    const dateOnlyMatch = value.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+    if (dateOnlyMatch) {
+      const [, year, month, day] = dateOnlyMatch;
+      return `${day}/${month}/${year}`;
+    }
+
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return value;
+
+    const day = String(date.getDate()).padStart(2, '0');
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const year = date.getFullYear();
+    return `${day}/${month}/${year}`;
   };
 
   // Fetch members on component mount
@@ -355,6 +413,37 @@ export default function Members() {
     closeNewMemberModal();
   };
 
+  const openViewMemberModal = async (memberId: string) => {
+    setOpenAction(null);
+    setIsViewMemberOpen(true);
+    setIsLoadingMemberDetails(true);
+    setMemberDetailsError('');
+    setSelectedMemberDetails(null);
+
+    try {
+      const response = await getMemberById(memberId);
+      const member = response?.additionalData?.response ?? response?.response ?? null;
+
+      if (!member) {
+        setMemberDetailsError('Unable to load member details.');
+        return;
+      }
+
+      setSelectedMemberDetails(member as MemberDetails);
+    } catch (error) {
+      setMemberDetailsError('Failed to load member details. Please try again.');
+    } finally {
+      setIsLoadingMemberDetails(false);
+    }
+  };
+
+  const closeViewMemberModal = () => {
+    setIsViewMemberOpen(false);
+    setIsLoadingMemberDetails(false);
+    setMemberDetailsError('');
+    setSelectedMemberDetails(null);
+  };
+
   return (
     <div className="max-w-7xl mx-auto px-4 py-6">
       {pageAlert.visible && (
@@ -496,7 +585,7 @@ export default function Members() {
 
                           {openAction && openAction.id === p.id && createPortal(
                             <div style={{ position: 'fixed', top: openAction.top, left: openAction.left, width: 144 }} onMouseDown={(e) => e.stopPropagation()} className="rounded-md bg-white border shadow-lg z-50">
-                              <button onClick={() => { setOpenAction(null); alert(`View ${p.name}`); }} className="flex items-center gap-2 w-full px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 cursor-pointer">
+                              <button onClick={() => openViewMemberModal(p.id)} className="flex items-center gap-2 w-full px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 cursor-pointer">
                                 <Eye size={14} /> View
                               </button>
                               <button onClick={() => { setOpenAction(null); alert(`Edit ${p.name}`); }} className="flex items-center gap-2 w-full px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 cursor-pointer">
@@ -754,6 +843,82 @@ export default function Members() {
                   </div>
                 </div>
               )}
+            </div>
+          </div>
+        </div>,
+        document.body,
+      )}
+
+      {isViewMemberOpen && createPortal(
+        <div className="fixed inset-0 z-80 flex items-center justify-center bg-black/50 px-3 py-4 sm:px-4 sm:py-6">
+          <div className="max-h-[92vh] w-full max-w-4xl overflow-hidden rounded-2xl bg-white shadow-2xl">
+            <div className="flex items-start justify-between border-b border-gray-200 px-5 py-4">
+              <div>
+                <h2 className="text-xl font-semibold text-gray-900 sm:text-2xl">Member Details</h2>
+                <p className="mt-1 text-sm text-gray-500">Complete member profile and membership status.</p>
+              </div>
+              <button onClick={closeViewMemberModal} className="rounded-full p-2 text-gray-500 transition hover:bg-gray-100 hover:text-gray-900">
+                <X size={18} />
+              </button>
+            </div>
+
+            <div className="max-h-[calc(92vh-88px)] overflow-y-auto px-5 py-5 sm:px-6 sm:py-6">
+              {isLoadingMemberDetails ? (
+                <div className="flex min-h-[280px] items-center justify-center gap-3">
+                  <Loader2 size={20} className="animate-spin text-blue-600" />
+                  <span className="text-sm text-gray-600">Loading member details...</span>
+                </div>
+              ) : memberDetailsError ? (
+                <div className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+                  {memberDetailsError}
+                </div>
+              ) : selectedMemberDetails ? (
+                <div className="space-y-4">
+                  <div className="flex items-start gap-3 rounded-2xl border border-gray-200 bg-gray-50 px-4 py-4">
+                    <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-blue-100 text-blue-600">
+                      <UserRound size={20} />
+                    </div>
+                    <div>
+                      <h3 className="text-base font-semibold text-gray-900 sm:text-md">Profile Overview</h3>
+                      <p className="text-sm text-gray-500">Information fetched from member profile API.</p>
+                    </div>
+                  </div>
+
+                  <div className="grid gap-4 lg:grid-cols-2">
+                    <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
+                      <h4 className="text-sm font-semibold uppercase tracking-wide text-gray-500">Personal Details</h4>
+                      <div className="mt-4 space-y-3 text-sm text-gray-600">
+                        <div className="flex items-center justify-between gap-4"><span>Member No</span><span className="font-medium text-gray-900">{selectedMemberDetails.membershipNumber}</span></div>
+                        <div className="flex items-center justify-between gap-4"><span>Name</span><span className="font-medium text-gray-900">{selectedMemberDetails.firstName} {selectedMemberDetails.lastName}</span></div>
+                        <div className="flex items-center justify-between gap-4"><span>Email</span><span className="font-medium text-gray-900">{selectedMemberDetails.email}</span></div>
+                        <div className="flex items-center justify-between gap-4"><span>Phone</span><span className="font-medium text-gray-900">{selectedMemberDetails.phoneNumber ? `+94${selectedMemberDetails.phoneNumber}` : 'N/A'}</span></div>
+                        <div className="flex items-center justify-between gap-4"><span>Date of Birth</span><span className="font-medium text-gray-900">{formatDisplayDate(selectedMemberDetails.dateOfBirth)}</span></div>
+                        <div className="flex items-center justify-between gap-4"><span>Gender</span><span className="font-medium text-gray-900">{selectedMemberDetails.gender === 1 ? 'Male' : 'Female'}</span></div>
+                      </div>
+                    </div>
+
+                    <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
+                      <h4 className="text-sm font-semibold uppercase tracking-wide text-gray-500">Membership Details</h4>
+                      <div className="mt-4 space-y-3 text-sm text-gray-600">
+                        <div className="flex items-center justify-between gap-4"><span>Status</span><span className="font-medium text-gray-900">{selectedMemberDetails.membershipStatus}</span></div>
+                        <div className="flex items-center justify-between gap-4"><span>Plan</span><span className="font-medium text-gray-900">{selectedMemberDetails.membershipPlanTitle}</span></div>
+                        <div className="flex items-center justify-between gap-4"><span>Price</span><span className="font-medium text-gray-900">LKR {Number(selectedMemberDetails.membershipPlanPrice || 0).toLocaleString()}</span></div>
+                        <div className="flex items-center justify-between gap-4"><span>Duration</span><span className="font-medium text-gray-900">{selectedMemberDetails.membershipPlanDurationInDays} days</span></div>
+                        <div className="flex items-center justify-between gap-4"><span>Start Date</span><span className="font-medium text-gray-900">{formatDisplayDate(selectedMemberDetails.membershipStartDate)}</span></div>
+                        <div className="flex items-center justify-between gap-4"><span>End Date</span><span className="font-medium text-gray-900">{formatDisplayDate(selectedMemberDetails.membershipEndDate)}</span></div>
+                        <div className="flex items-center justify-between gap-4"><span>Payment Status</span><span className="font-medium text-gray-900">{paymentStatusLabel(selectedMemberDetails.paymentStatus)}</span></div>
+                        <div className="flex items-center justify-between gap-4"><span>Fingerprints</span><span className="font-medium text-gray-900">{selectedMemberDetails.isSavedFingerprints ? 'Saved' : 'Not Saved'}</span></div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center justify-end border-t border-gray-200 pt-4">
+                    <button onClick={closeViewMemberModal} className="rounded-lg border border-gray-200 px-4 py-2 text-sm font-medium text-gray-700 transition hover:bg-gray-50">
+                      Close
+                    </button>
+                  </div>
+                </div>
+              ) : null}
             </div>
           </div>
         </div>,

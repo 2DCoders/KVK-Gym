@@ -34,3 +34,16 @@ export const getMembers = async () => {
     throw error;
   }
 }
+
+export const getMemberById = async (memberId: string) => {
+  try {
+    const response = await axios.get(`${MEMBERS_API_URL}${memberId}/`, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
+    return response.data;
+  } catch (error) {
+    throw error;
+  }
+};
