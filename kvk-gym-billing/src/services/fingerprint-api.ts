@@ -11,7 +11,7 @@ const token = cashier ? cashier.token : null;
 
 export const fingerPrintSave = async (memberId: string, fingerprintData: any) => {
     try {
-        const response = await axios.post(`${MEMBERS_API_URL}${memberId}/fingerprints/`, fingerprintData, {
+        const response = await axios.put(`${MEMBERS_API_URL}${memberId}/fingerprints/`, fingerprintData, {
             headers: {
                 Authorization: `Bearer ${token}`,
             },

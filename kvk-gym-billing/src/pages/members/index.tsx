@@ -166,6 +166,10 @@ export default function Members() {
   const [paymentMethod, setPaymentMethod] = useState<'cash' | 'card'>('cash');
   const [paymentRemark, setPaymentRemark] = useState('');
   const [payLoading, setPayLoading] = useState(false);
+  const [isFingerprintModalOpen, setIsFingerprintModalOpen] = useState(false);
+  const [fingerprintId1, setFingerprintId1] = useState('DUMMY_FINGERPRINT_1');
+  const [fingerprintId2, setFingerprintId2] = useState('DUMMY_FINGERPRINT_2');
+  const [fingerprintSaveLoading, setFingerprintSaveLoading] = useState(false);
 
   // pagination state
   const [page, setPage] = useState(1);
@@ -490,8 +494,11 @@ export default function Members() {
     setMemberDetailsError('');
     setSelectedMemberDetails(null);
     setIsPayModalOpen(false);
+    setIsFingerprintModalOpen(false);
     setPaymentMethod('cash');
     setPaymentRemark('');
+    setFingerprintId1('DUMMY_FINGERPRINT_1');
+    setFingerprintId2('DUMMY_FINGERPRINT_2');
   };
 
   const openPaymentModal = () => {
@@ -506,6 +513,62 @@ export default function Members() {
     setIsPayModalOpen(false);
     setPaymentMethod('cash');
     setPaymentRemark('');
+  };
+
+  const openFingerprintModal = () => {
+    if (!selectedMemberDetails) return;
+
+    setFingerprintId1('DUMMY_FINGERPRINT_1');
+    setFingerprintId2('DUMMY_FINGERPRINT_2');
+    setIsFingerprintModalOpen(true);
+  };
+
+  const closeFingerprintModal = () => {
+    setIsFingerprintModalOpen(false);
+    setFingerprintId1('DUMMY_FINGERPRINT_1');
+    setFingerprintId2('DUMMY_FINGERPRINT_2');
+  };
+
+  const handleSaveFingerprints = async () => {
+    if (!selectedMemberDetails) return;
+
+    const payload = {
+      deviceFingerprintId1: fingerprintId1.trim() || 'DUMMY_FINGERPRINT_1',
+      deviceFingerprintId2: fingerprintId2.trim() || 'DUMMY_FINGERPRINT_2',
+    };
+
+    setFingerprintSaveLoading(true);
+    try {
+      await fingerPrintSave(selectedMemberDetails.id, payload);
+
+      setPageAlert({
+        visible: true,
+        variant: 'success',
+        title: 'Fingerprints Saved',
+        description: 'Fingerprint details were saved successfully.',
+      });
+
+      try {
+        const response = await getMemberById(selectedMemberDetails.id);
+        const member = response?.additionalData?.response ?? response?.response ?? null;
+        if (member) setSelectedMemberDetails(member as MemberDetails);
+      } catch {
+        // ignore refresh error
+      }
+
+      closeFingerprintModal();
+    } catch (error: any) {
+      const message = error?.response?.data?.message || error?.message || 'Failed to save fingerprints. Please try again.';
+      setPageAlert({
+        visible: true,
+        variant: 'error',
+        title: 'Fingerprint Save Failed',
+        description: message,
+      });
+    } finally {
+      setFingerprintSaveLoading(false);
+      window.location.reload(); // Force reload to update fingerprint status in member list, as it is not part of the details response and would require refetching the entire list or updating state manually
+    }
   };
 
   const handleSavePayment = async () => {
@@ -1140,7 +1203,7 @@ export default function Members() {
                       Pay
                     </button>
                     {!selectedMemberDetails.isSavedFingerprints && selectedMemberDetails.paymentStatus !== 1 ? (
-                      <button className="inline-flex cursor-pointer items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-blue-700">
+                      <button onClick={openFingerprintModal} className="inline-flex cursor-pointer items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-blue-700">
                         <Fingerprint size={16} />
                         Fingerprints
                       </button>
@@ -1212,6 +1275,64 @@ export default function Members() {
                   </button>
                   <button onClick={handleSavePayment} disabled={payLoading} className="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-5 py-2 text-sm font-medium text-white transition hover:bg-blue-700 cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed">
                     {payLoading ? <Loader2 size={16} className="animate-spin" /> : 'Save'}
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>,
+        document.body,
+      )}
+
+      {isFingerprintModalOpen && createPortal(
+        <div className="fixed inset-0 z-[95] flex items-center justify-center bg-black/60 px-3 py-4 sm:px-4 sm:py-6">
+          <div className="max-h-[92vh] w-full max-w-2xl overflow-hidden rounded-2xl bg-white shadow-2xl">
+            <div className="flex items-start justify-between border-b border-gray-200 px-5 py-4">
+              <div>
+                <h2 className="text-xl font-semibold text-gray-900 sm:text-2xl">Fingerprints</h2>
+                <p className="mt-1 text-sm text-gray-500">Save fingerprint values for this member.</p>
+              </div>
+              <button onClick={closeFingerprintModal} className="rounded-full p-2 cursor-pointer text-gray-500 transition hover:bg-gray-100 hover:text-gray-900">
+                <X size={18} />
+              </button>
+            </div>
+
+            <div className="max-h-[calc(92vh-88px)] overflow-y-auto px-5 py-5 sm:px-6 sm:py-6">
+              <div className="space-y-4">
+                <div className="rounded-2xl border border-gray-200 bg-gray-50 px-4 py-4">
+                  <div className="flex items-center justify-between gap-4">
+                    <span className="text-sm font-medium text-gray-600">Member</span>
+                    <span className="text-sm font-semibold text-gray-900">{selectedMemberDetails?.membershipNumber}</span>
+                  </div>
+                </div>
+
+                <div>
+                  <label className="mb-2 block text-sm font-medium text-gray-900">Fingerprint ID 1</label>
+                  <input
+                    value={fingerprintId1}
+                    onChange={(event) => setFingerprintId1(event.target.value)}
+                    className="w-full rounded-lg border border-gray-200 px-4 py-3 text-sm outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+                    placeholder="DUMMY_FINGERPRINT_1"
+                  />
+                </div>
+
+                <div>
+                  <label className="mb-2 block text-sm font-medium text-gray-900">Fingerprint ID 2</label>
+                  <input
+                    value={fingerprintId2}
+                    onChange={(event) => setFingerprintId2(event.target.value)}
+                    className="w-full rounded-lg border border-gray-200 px-4 py-3 text-sm outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+                    placeholder="DUMMY_FINGERPRINT_2"
+                  />
+                </div>
+
+                <div className="flex items-center justify-end gap-3 border-t border-gray-200 pt-4">
+                  <button onClick={closeFingerprintModal} className="rounded-lg border border-gray-200 px-4 py-2 text-sm font-medium text-gray-700 transition hover:bg-gray-50 cursor-pointer">
+                    Cancel
+                  </button>
+                  <button onClick={handleSaveFingerprints} disabled={fingerprintSaveLoading} className="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-5 py-2 text-sm font-medium text-white transition hover:bg-blue-700 cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed">
+                    {fingerprintSaveLoading ? <Loader2 size={16} className="animate-spin" /> : <Fingerprint size={16} />}
+                    {fingerprintSaveLoading ? 'Saving...' : 'Save'}
                   </button>
                 </div>
               </div>
