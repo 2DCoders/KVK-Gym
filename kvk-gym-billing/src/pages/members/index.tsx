@@ -2,6 +2,7 @@ import { createPortal } from 'react-dom';
 import { useEffect, useState } from 'react';
 import { ArrowLeft, ArrowRight, CreditCard, Fingerprint, Loader2, MoreVertical, Plus, Search, UserRound, X, Eye, Edit, Trash2 } from 'lucide-react';
 import { registerMember, getMemberById, getMembers } from '@/services/members-api';
+import { fingerPrintSave } from '@/services/fingerprint-api';
 import { processPayment } from '@/services/payment-api';
 import { getMembershipPlans } from '@/services/membership-plans-api';
 import Alert from '@/components/ui/alert';
@@ -404,6 +405,28 @@ export default function Members() {
       });
 
       setRegisteredMemberId(newMemberId ?? null);
+
+      if (newMemberId) {
+        try {
+          await fingerPrintSave(newMemberId, {
+            deviceFingerprintId1: "simulated-fingerprint-id-1",
+            deviceFingerprintId2: "simulated-fingerprint-id-2",
+          });
+          setPageAlert({
+            visible: true,
+            variant: 'success',
+            title: 'Fingerprint Saved',
+            description: 'The fingerprint has been successfully saved.'
+          });
+        } catch {
+          setPageAlert({
+            visible: true,
+            variant: 'warning',
+            title: 'Fingerprint Save Skipped',
+            description: 'The member was registered, but the fingerprint save request did not complete.'
+          });
+        }
+      }
 
       // If we have a new member id, fetch details to use in payment step
       if (newMemberId) {
