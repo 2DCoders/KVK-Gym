@@ -360,6 +360,7 @@ export default function Members() {
     setIsRegistering(false);
     setIsSubmittingFingerprint(false);
     setForm(initialMemberForm);
+    setSearchTerm('');
   };
 
   const updateField = (field: keyof MemberForm, value: string) => {
