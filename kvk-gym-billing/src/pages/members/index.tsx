@@ -170,6 +170,7 @@ export default function Members() {
   const [fingerprintId1, setFingerprintId1] = useState('DUMMY_FINGERPRINT_1');
   const [fingerprintId2, setFingerprintId2] = useState('DUMMY_FINGERPRINT_2');
   const [fingerprintSaveLoading, setFingerprintSaveLoading] = useState(false);
+  const [isSubmittingFingerprint, setIsSubmittingFingerprint] = useState(false);
 
   // pagination state
   const [page, setPage] = useState(1);
@@ -357,6 +358,7 @@ export default function Members() {
     setFieldErrors({});
     setSubmitError('');
     setIsRegistering(false);
+    setIsSubmittingFingerprint(false);
     setForm(initialMemberForm);
   };
 
@@ -404,33 +406,11 @@ export default function Members() {
       setPageAlert({
         visible: true,
         variant: 'success',
-        title: 'Member Registered',
-        description: 'The member has been successfully registered.'
+        title: 'Details Saved',
+        description: 'The member details have been successfully saved.'
       });
 
       setRegisteredMemberId(newMemberId ?? null);
-
-      if (newMemberId) {
-        try {
-          await fingerPrintSave(newMemberId, {
-            deviceFingerprintId1: "simulated-fingerprint-id-1",
-            deviceFingerprintId2: "simulated-fingerprint-id-2",
-          });
-          setPageAlert({
-            visible: true,
-            variant: 'success',
-            title: 'Fingerprint Saved',
-            description: 'The fingerprint has been successfully saved.'
-          });
-        } catch {
-          setPageAlert({
-            visible: true,
-            variant: 'warning',
-            title: 'Fingerprint Save Skipped',
-            description: 'The member was registered, but the fingerprint save request did not complete.'
-          });
-        }
-      }
 
       // If we have a new member id, fetch details to use in payment step
       if (newMemberId) {
@@ -445,12 +425,12 @@ export default function Members() {
 
       setMemberStep(2);
       setSearchTerm('');
-    } catch (error) {
+    } catch (error:any) {      
       setPageAlert({
         visible: true,
         variant: 'error',
         title: 'Registration Failed',
-        description: 'An error occurred while registering the member. Please try again.'
+        description: error.response.data.message || 'An error occurred while registering the member. Please try again.'
       });
     } finally {
       setIsRegistering(false);
@@ -460,8 +440,47 @@ export default function Members() {
 
   const goBackStep = () => setMemberStep(1);
 
-  const handleFinalSubmit = () => {
-    closeNewMemberModal();
+  const handleFinalSubmit = async () => {
+    if (!registeredMemberId) {
+      setPageAlert({
+        visible: true,
+        variant: 'warning',
+        title: 'No Member Found',
+        description: 'Please register the member details first.'
+      });
+      return;
+    }
+
+    setIsSubmittingFingerprint(true);
+    try {
+      await fingerPrintSave(registeredMemberId, {
+        deviceFingerprintId1: fingerprintId1.trim() || 'DUMMY_FINGERPRINT_1',
+        deviceFingerprintId2: fingerprintId2.trim() || 'DUMMY_FINGERPRINT_2',
+      });
+
+      setPageAlert({
+        visible: true,
+        variant: 'success',
+        title: 'Fingerprint Saved',
+        description: 'Fingerprint details have been saved successfully.'
+      });
+
+      closeNewMemberModal();
+
+      window.setTimeout(() => {
+        window.location.reload();
+      }, 2000);
+    } catch (error: any) {
+      const message = error?.response?.data?.message || error?.message || 'Failed to save fingerprint details.';
+      setPageAlert({
+        visible: true,
+        variant: 'error',
+        title: 'Fingerprint Save Failed',
+        description: message,
+      });
+    } finally {
+      setIsSubmittingFingerprint(false);
+    }
   };
 
   const openViewMemberModal = async (memberId: string) => {
@@ -1104,8 +1123,9 @@ export default function Members() {
                       <button onClick={closeNewMemberModal} className="rounded-lg border cursor-pointer border-gray-200 px-4 py-2 text-sm font-medium text-gray-700 transition hover:bg-gray-50">
                         Cancel
                       </button>
-                      <button onClick={handleFinalSubmit} className="inline-flex items-center cursor-pointer gap-2 rounded-lg bg-blue-600 px-5 py-2 text-sm font-medium text-white transition hover:bg-blue-700">
-                        Submit
+                      <button onClick={handleFinalSubmit} disabled={isSubmittingFingerprint} className="inline-flex items-center cursor-pointer gap-2 rounded-lg bg-blue-600 px-5 py-2 text-sm font-medium text-white transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60">
+                        {isSubmittingFingerprint ? <Loader2 size={16} className="animate-spin" /> : <ArrowRight size={16} />}
+                        {isSubmittingFingerprint ? 'Saving...' : 'Submit'}
                       </button>
                     </div>
                   </div>
