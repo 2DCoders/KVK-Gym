@@ -2,6 +2,7 @@ import { createPortal } from 'react-dom';
 import { useEffect, useState } from 'react';
 import { ArrowLeft, ArrowRight, CreditCard, Fingerprint, Loader2, MoreVertical, Plus, Search, UserRound, X, Eye, Edit, Trash2 } from 'lucide-react';
 import { registerMember, getMemberById, getMembers } from '@/services/members-api';
+import { processPayment } from '@/services/payment-api';
 import { getMembershipPlans } from '@/services/membership-plans-api';
 import Alert from '@/components/ui/alert';
 
@@ -162,6 +163,7 @@ export default function Members() {
   const [isPayModalOpen, setIsPayModalOpen] = useState(false);
   const [paymentMethod, setPaymentMethod] = useState<'cash' | 'card'>('cash');
   const [paymentRemark, setPaymentRemark] = useState('');
+  const [payLoading, setPayLoading] = useState(false);
 
   // pagination state
   const [page, setPage] = useState(1);
@@ -464,22 +466,54 @@ export default function Members() {
     setPaymentRemark('');
   };
 
-  const handleSavePayment = () => {
+  const handleSavePayment = async () => {
     if (!selectedMemberDetails) return;
 
-    const amount = Number(selectedMemberDetails.membershipPlanPrice || 0).toLocaleString();
+    const amount = Number(selectedMemberDetails.membershipPlanPrice || 0);
     const methodLabel = paymentMethod === 'card' ? 'Card' : 'Cash';
-    const confirmMessage = `Confirm payment of LKR ${amount} via ${methodLabel}?` + (paymentRemark.trim() ? `\n\nRemark: ${paymentRemark.trim()}` : '');
+    const confirmMessage = `Confirm payment of LKR ${amount.toLocaleString()} via ${methodLabel}?` + (paymentRemark.trim() ? `\n\nRemark: ${paymentRemark.trim()}` : '');
 
     if (!window.confirm(confirmMessage)) return;
 
-    setPageAlert({
-      visible: true,
-      variant: 'success',
-      title: 'Payment Saved',
-      description: `Payment marked as ${methodLabel}${paymentRemark.trim() ? ` with remark: ${paymentRemark.trim()}` : ''}.`,
-    });
-    closePaymentModal();
+    const paymentData: any = {
+      amount,
+      paymentType: paymentMethod === 'cash' ? 1 : 2,
+      paymentStatus: 1,
+      transactionReference: null,
+    };
+
+    setPayLoading(true);
+    try {
+      await processPayment(paymentData, selectedMemberDetails.id);
+
+      setPageAlert({
+        visible: true,
+        variant: 'success',
+        title: 'Payment Processed',
+        description: `Payment of LKR ${amount.toLocaleString()} via ${methodLabel} was successful.`,
+      });
+
+      closePaymentModal();
+
+      // Refresh member details
+      try {
+        const response = await getMemberById(selectedMemberDetails.id);
+        const member = response?.additionalData?.response ?? response?.response ?? null;
+        if (member) setSelectedMemberDetails(member as MemberDetails);
+      } catch {
+        // ignore refresh error
+      }
+    } catch (err: any) {
+      const msg = err?.response?.data?.message || err?.message || 'Failed to process payment. Please try again.';
+      setPageAlert({
+        visible: true,
+        variant: 'error',
+        title: 'Payment Failed',
+        description: msg,
+      });
+    } finally {
+      setPayLoading(false);
+    }
   };
 
   return (
@@ -1043,8 +1077,8 @@ export default function Members() {
                   <button onClick={closePaymentModal} className="rounded-lg border border-gray-200 px-4 py-2 text-sm font-medium text-gray-700 transition hover:bg-gray-50 cursor-pointer">
                     Cancel
                   </button>
-                  <button onClick={handleSavePayment} className="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-5 py-2 text-sm font-medium text-white transition hover:bg-blue-700 cursor-pointer">
-                    Save
+                  <button onClick={handleSavePayment} disabled={payLoading} className="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-5 py-2 text-sm font-medium text-white transition hover:bg-blue-700 cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed">
+                    {payLoading ? <Loader2 size={16} className="animate-spin" /> : 'Save'}
                   </button>
                 </div>
               </div>
