@@ -151,6 +151,7 @@ export default function Members() {
   const [activeTab, setActiveTab] = useState<MemberStatus>('approved');
   const [isNewMemberOpen, setIsNewMemberOpen] = useState(false);
   const [memberStep, setMemberStep] = useState(1);
+  const [registeredMemberId, setRegisteredMemberId] = useState<string | null>(null);
   const [form, setForm] = useState<MemberForm>(initialMemberForm);
   const [fieldErrors, setFieldErrors] = useState<MemberFieldErrors>({});
   const [submitError, setSubmitError] = useState('');
@@ -391,14 +392,32 @@ export default function Members() {
     setIsRegistering(true);
 
     try {
-      await registerMember(buildRegistrationPayload());
+      const res = await registerMember(buildRegistrationPayload());
+      const created = res?.additionalData?.response ?? res?.response ?? res ?? null;
+      const newMemberId = created?.id ?? created?.memberId ?? null;
+
       setPageAlert({
         visible: true,
         variant: 'success',
         title: 'Member Registered',
         description: 'The member has been successfully registered.'
       });
+
+      setRegisteredMemberId(newMemberId ?? null);
+
+      // If we have a new member id, fetch details to use in payment step
+      if (newMemberId) {
+        try {
+          const detailResp = await getMemberById(newMemberId);
+          const member = detailResp?.additionalData?.response ?? detailResp?.response ?? null;
+          if (member) setSelectedMemberDetails(member as MemberDetails);
+        } catch {
+          // ignore
+        }
+      }
+
       setMemberStep(2);
+      setSearchTerm('');
     } catch (error) {
       setPageAlert({
         visible: true,
@@ -718,7 +737,7 @@ export default function Members() {
             </div>
 
             <div className="border-b border-gray-200 px-5 py-4 sm:px-6">
-              <div className="mx-auto grid w-full max-w-xl grid-cols-[1fr_auto_1fr] items-center">
+              <div className="mx-auto grid w-full max-w-xl grid-cols-[1fr_auto_1fr_auto_1fr] items-center">
                 <div className="flex items-center justify-end pr-4 sm:pr-6">
                   <div className="flex flex-col items-center gap-2 text-center shrink-0">
                     <div className={`flex h-10 w-10 items-center justify-center rounded-full border text-sm font-semibold ${memberStep >= 1 ? 'border-blue-500 bg-blue-50 text-blue-600' : 'border-gray-200 bg-white text-gray-400'}`}>
@@ -728,14 +747,25 @@ export default function Members() {
                   </div>
                 </div>
 
-                <div className="h-px w-24 bg-gray-200 sm:w-32 md:w-40" />
+                <div className="h-px w-16 bg-gray-200 sm:w-20 md:w-24" />
 
-                <div className="flex items-center justify-start pl-4 sm:pl-6">
+                <div className="flex items-center justify-center">
                   <div className="flex flex-col items-center gap-2 text-center shrink-0">
                     <div className={`flex h-10 w-10 items-center justify-center rounded-full border text-sm font-semibold ${memberStep >= 2 ? 'border-blue-500 bg-blue-50 text-blue-600' : 'border-gray-200 bg-white text-gray-400'}`}>
                       2
                     </div>
-                    <span className={`text-xs font-medium sm:text-sm ${memberStep >= 2 ? 'text-blue-600' : 'text-gray-500'}`}>Fingerprint</span>
+                    <span className={`text-xs font-medium sm:text-sm ${memberStep >= 2 ? 'text-blue-600' : 'text-gray-500'}`}>Payment</span>
+                  </div>
+                </div>
+
+                <div className="h-px w-16 bg-gray-200 sm:w-20 md:w-24" />
+
+                <div className="flex items-center justify-start pl-4 sm:pl-6">
+                  <div className="flex flex-col items-center gap-2 text-center shrink-0">
+                    <div className={`flex h-10 w-10 items-center justify-center rounded-full border text-sm font-semibold ${memberStep >= 3 ? 'border-blue-500 bg-blue-50 text-blue-600' : 'border-gray-200 bg-white text-gray-400'}`}>
+                      3
+                    </div>
+                    <span className={`text-xs font-medium sm:text-sm ${memberStep >= 3 ? 'text-blue-600' : 'text-gray-500'}`}>Fingerprint</span>
                   </div>
                 </div>
               </div>
@@ -825,6 +855,86 @@ export default function Members() {
                     </div>
                   ) : null}
                 </div>
+              ) : memberStep === 2 ? (
+                <div className="space-y-5">
+                  <div className="flex items-start gap-3 rounded-2xl border border-gray-200 bg-gray-50 px-4 py-4">
+                    <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-blue-100 text-blue-600">
+                      <CreditCard size={20} />
+                    </div>
+                    <div>
+                      <h3 className="text-base font-semibold text-gray-900 sm:text-md">Payment</h3>
+                      <p className="text-sm text-gray-500">Capture initial payment for the membership.</p>
+                    </div>
+                  </div>
+
+                  <div className="rounded-2xl border border-gray-200 bg-gray-50 px-4 py-4">
+                    <div className="flex items-center justify-between gap-4">
+                      <span className="text-sm font-medium text-gray-600">Price</span>
+                      <span className="text-base font-semibold text-gray-900">LKR {Number(selectedMembershipPlan?.price || 0).toLocaleString()}</span>
+                    </div>
+                  </div>
+
+                  <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
+                    <label className="mb-3 block text-sm font-medium text-gray-900">Payment Type</label>
+                    <div className="flex flex-wrap gap-4">
+                      <label className="inline-flex items-center cursor-pointer gap-2 rounded-xl border border-gray-200 px-4 py-3 text-sm text-gray-700">
+                        <input type="radio" name="regPaymentMethod" value="cash" checked={paymentMethod === 'cash'} onChange={() => setPaymentMethod('cash')} />
+                        Cash
+                      </label>
+                      <label className="inline-flex items-center cursor-pointer gap-2 rounded-xl border border-gray-200 px-4 py-3 text-sm text-gray-700">
+                        <input type="radio" name="regPaymentMethod" value="card" checked={paymentMethod === 'card'} onChange={() => setPaymentMethod('card')} />
+                        Card
+                      </label>
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="mb-2 block text-sm font-medium text-gray-900">Remark <span className="text-gray-400 font-normal">(optional)</span></label>
+                    <textarea value={paymentRemark} onChange={(event) => setPaymentRemark(event.target.value)} rows={4} className="w-full rounded-lg border border-gray-200 px-4 py-3 text-sm outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100" placeholder="Add a remark about the payment..." />
+                  </div>
+
+                  <div className="flex items-center justify-between border-t border-gray-200 pt-4 mb-5.5">
+                    <button onClick={() => setMemberStep(1)} className="inline-flex cursor-pointer items-center gap-2 rounded-lg border border-gray-200 px-4 py-2.5 text-sm font-medium text-gray-700 transition hover:bg-gray-50">
+                      <ArrowLeft size={16} />
+                      Back
+                    </button>
+                    <div className="flex items-center gap-3">
+                      <button onClick={closeNewMemberModal} className="rounded-lg border cursor-pointer border-gray-200 px-4 py-2 text-sm font-medium text-gray-700 transition hover:bg-gray-50">
+                        Cancel
+                      </button>
+                      <button onClick={async () => {
+                        if (!registeredMemberId) {
+                          setPageAlert({ visible: true, variant: 'warning', title: 'No Member', description: 'Member not created yet. Please try again.' });
+                          return;
+                        }
+
+                        const amt = Number(selectedMembershipPlan?.price || 0);
+                        const confirmMsg = `Confirm payment of LKR ${amt.toLocaleString()} via ${paymentMethod === 'card' ? 'Card' : 'Cash'}?` + (paymentRemark.trim() ? `\n\nRemark: ${paymentRemark.trim()}` : '');
+                        if (!window.confirm(confirmMsg)) return;
+
+                        setPayLoading(true);
+                        try {
+                          await processPayment({ amount: amt, paymentType: paymentMethod === 'cash' ? 1 : 2, paymentStatus: 1, transactionReference: null, startDate: new Date().toISOString() }, registeredMemberId);
+                          setPageAlert({ visible: true, variant: 'success', title: 'Payment Processed', description: `Payment of LKR ${amt.toLocaleString()} successful.` });
+                          try {
+                            const detailResp = await getMemberById(registeredMemberId);
+                            const member = detailResp?.additionalData?.response ?? detailResp?.response ?? null;
+                            if (member) setSelectedMemberDetails(member as MemberDetails);
+                          } catch {}
+                          setMemberStep(3);
+                        } catch (e: any) {
+                          const msg = e?.response?.data?.message || e?.message || 'Failed to process payment.';
+                          setPageAlert({ visible: true, variant: 'error', title: 'Payment Failed', description: msg });
+                        } finally {
+                          setPayLoading(false);
+                        }
+                      }} disabled={payLoading} className="inline-flex cursor-pointer items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-blue-700 disabled:opacity-60 disabled:cursor-not-allowed">
+                        {payLoading ? <Loader2 size={16} className="animate-spin" /> : <ArrowRight size={16} />}
+                        {payLoading ? 'Processing...' : 'Pay & Next'}
+                      </button>
+                    </div>
+                  </div>
+                </div>
               ) : (
                 <div className="space-y-5">
                   <div className="flex items-start gap-3 rounded-2xl border border-gray-200 bg-gray-50 px-4 py-4">
@@ -900,15 +1010,15 @@ export default function Members() {
                   </div>
 
                   <div className="flex items-center justify-between border-t border-gray-200 pt-4 mb-5.5">
-                    <button onClick={goBackStep} className="inline-flex items-center gap-2 rounded-lg border border-gray-200 px-4 py-2.5 text-sm font-medium text-gray-700 transition hover:bg-gray-50">
+                    <button onClick={goBackStep} className="inline-flex items-center cursor-pointer gap-2 rounded-lg border border-gray-200 px-4 py-2.5 text-sm font-medium text-gray-700 transition hover:bg-gray-50">
                       <ArrowLeft size={16} />
                       Back
                     </button>
                     <div className="flex items-center gap-3">
-                      <button onClick={closeNewMemberModal} className="rounded-lg border border-gray-200 px-4 py-2 text-sm font-medium text-gray-700 transition hover:bg-gray-50">
+                      <button onClick={closeNewMemberModal} className="rounded-lg border cursor-pointer border-gray-200 px-4 py-2 text-sm font-medium text-gray-700 transition hover:bg-gray-50">
                         Cancel
                       </button>
-                      <button onClick={handleFinalSubmit} className="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-5 py-2 text-sm font-medium text-white transition hover:bg-blue-700">
+                      <button onClick={handleFinalSubmit} className="inline-flex items-center cursor-pointer gap-2 rounded-lg bg-blue-600 px-5 py-2 text-sm font-medium text-white transition hover:bg-blue-700">
                         Submit
                       </button>
                     </div>
