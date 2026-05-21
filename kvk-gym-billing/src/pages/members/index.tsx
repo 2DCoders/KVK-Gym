@@ -465,11 +465,19 @@ export default function Members() {
   };
 
   const handleSavePayment = () => {
+    if (!selectedMemberDetails) return;
+
+    const amount = Number(selectedMemberDetails.membershipPlanPrice || 0).toLocaleString();
+    const methodLabel = paymentMethod === 'card' ? 'Card' : 'Cash';
+    const confirmMessage = `Confirm payment of LKR ${amount} via ${methodLabel}?` + (paymentRemark.trim() ? `\n\nRemark: ${paymentRemark.trim()}` : '');
+
+    if (!window.confirm(confirmMessage)) return;
+
     setPageAlert({
       visible: true,
       variant: 'success',
       title: 'Payment Saved',
-      description: `Payment marked as ${paymentMethod === 'card' ? 'Card' : 'Cash'}${paymentRemark.trim() ? ` with remark: ${paymentRemark.trim()}` : ''}.`,
+      description: `Payment marked as ${methodLabel}${paymentRemark.trim() ? ` with remark: ${paymentRemark.trim()}` : ''}.`,
     });
     closePaymentModal();
   };
