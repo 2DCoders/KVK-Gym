@@ -48,7 +48,7 @@ type MemberRegistrationPayload = {
   phone: string | null;
   dateOfBirth: string;
   memberType: number;
-  membershipPlan: string;
+  MembershipPlanId: string;
   gender: number;
   deviceFingerprintId1: string | null;
   deviceFingerprintId2: string | null;
@@ -210,10 +210,10 @@ export default function Members() {
 
       const mappedPlans: MembershipPlan[] = Array.isArray(plans)
         ? plans.map((plan: any) => ({
-            id: String(plan.id),
-            title: String(plan.title ?? 'Unnamed Plan'),
-            price: Number(plan.price ?? 0),
-          }))
+          id: String(plan.id),
+          title: String(plan.title ?? 'Unnamed Plan'),
+          price: Number(plan.price ?? 0),
+        }))
         : [];
 
       setMembershipPlans(mappedPlans);
@@ -300,8 +300,6 @@ export default function Members() {
     lastName: form.lastName.trim(),
     email: form.email.trim(),
     phone: form.phone.trim() ? form.phone.trim() : null,
-    // convert local datetime input to RFC3339 / ISO 8601 with Z
-    // convert date-only (YYYY-MM-DD) to RFC3339 midnight UTC (e.g. 2017-07-21T00:00:00Z)
     dateOfBirth: (function toIso(d: string) {
       if (!d) return '';
       const m = d.match(/^(\d{4})-(\d{2})-(\d{2})$/);
@@ -312,7 +310,7 @@ export default function Members() {
       return new Date(Date.UTC(y, mo - 1, day)).toISOString();
     })(form.dateOfBirth),
     memberType: 1,
-    membershipPlan: form.membershipPlan,
+    MembershipPlanId: form.membershipPlan,
     gender: form.gender === 'Female' ? 2 : 1,
     deviceFingerprintId1: null,
     deviceFingerprintId2: null,
@@ -473,10 +471,10 @@ export default function Members() {
                         <td className="py-2 px-3 align-top text-gray-700">{p.phone}</td>
                         <td className="py-2 px-3 align-top">
                           <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${p.status === 'approved'
-                              ? 'bg-emerald-100 text-emerald-700'
-                              : p.status === 'pending'
-                                ? 'bg-amber-100 text-amber-700'
-                                : 'bg-red-100 text-red-700'
+                            ? 'bg-emerald-100 text-emerald-700'
+                            : p.status === 'pending'
+                              ? 'bg-amber-100 text-amber-700'
+                              : 'bg-red-100 text-red-700'
                             }`}>
                             {p.status === 'approved' ? 'Active' : p.status === 'pending' ? 'Inactive' : 'Blocked'}
                           </span>
