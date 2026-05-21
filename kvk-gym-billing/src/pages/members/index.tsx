@@ -576,6 +576,33 @@ export default function Members() {
     setIsFingerprintModalOpen(true);
   };
 
+  const openUpdateFingerprintsModal = async (memberId: string) => {
+    setOpenAction(null);
+    setIsLoadingMemberDetails(true);
+    setMemberDetailsError('');
+    setIsViewMemberOpen(true);
+    setIsFingerprintModalOpen(false);
+
+    try {
+      const response = await getMemberById(memberId);
+      const member = response?.additionalData?.response ?? response?.response ?? null;
+
+      if (!member) {
+        setMemberDetailsError('Unable to load member details.');
+        return;
+      }
+
+      setSelectedMemberDetails(member as MemberDetails);
+      setFingerprintId1('DUMMY_FINGERPRINT_1');
+      setFingerprintId2('DUMMY_FINGERPRINT_2');
+      setIsFingerprintModalOpen(true);
+    } catch {
+      setMemberDetailsError('Failed to load member details. Please try again.');
+    } finally {
+      setIsLoadingMemberDetails(false);
+    }
+  };
+
   const closeFingerprintModal = () => {
     setIsFingerprintModalOpen(false);
     setFingerprintId1('DUMMY_FINGERPRINT_1');
@@ -933,6 +960,9 @@ export default function Members() {
                               </button>
                               <button onClick={() => openEditMemberModal(p.id)} className="flex items-center gap-2 w-full px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 cursor-pointer">
                                 <Edit size={14} /> Edit
+                              </button>
+                              <button onClick={() => openUpdateFingerprintsModal(p.id)} className="flex items-center gap-2 w-full px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 cursor-pointer">
+                                <Fingerprint size={14} /> Fingerprints
                               </button>
                               <button onClick={() => { setOpenAction(null); if (confirm(`Delete ${p.name}?`)) { alert(`${p.name} deleted`); } }} className="flex items-center gap-2 w-full px-3 py-2 text-sm text-red-600 hover:bg-gray-50 cursor-pointer">
                                 <Trash2 size={14} /> Delete
