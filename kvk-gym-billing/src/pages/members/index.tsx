@@ -159,6 +159,9 @@ export default function Members() {
   const [isLoadingMemberDetails, setIsLoadingMemberDetails] = useState(false);
   const [memberDetailsError, setMemberDetailsError] = useState('');
   const [selectedMemberDetails, setSelectedMemberDetails] = useState<MemberDetails | null>(null);
+  const [isPayModalOpen, setIsPayModalOpen] = useState(false);
+  const [paymentMethod, setPaymentMethod] = useState<'cash' | 'card'>('cash');
+  const [paymentRemark, setPaymentRemark] = useState('');
 
   // pagination state
   const [page, setPage] = useState(1);
@@ -442,6 +445,33 @@ export default function Members() {
     setIsLoadingMemberDetails(false);
     setMemberDetailsError('');
     setSelectedMemberDetails(null);
+    setIsPayModalOpen(false);
+    setPaymentMethod('cash');
+    setPaymentRemark('');
+  };
+
+  const openPaymentModal = () => {
+    if (!selectedMemberDetails || selectedMemberDetails.paymentStatus !== 1) return;
+
+    setPaymentMethod('cash');
+    setPaymentRemark('');
+    setIsPayModalOpen(true);
+  };
+
+  const closePaymentModal = () => {
+    setIsPayModalOpen(false);
+    setPaymentMethod('cash');
+    setPaymentRemark('');
+  };
+
+  const handleSavePayment = () => {
+    setPageAlert({
+      visible: true,
+      variant: 'success',
+      title: 'Payment Saved',
+      description: `Payment marked as ${paymentMethod === 'card' ? 'Card' : 'Cash'}${paymentRemark.trim() ? ` with remark: ${paymentRemark.trim()}` : ''}.`,
+    });
+    closePaymentModal();
   };
 
   return (
@@ -930,12 +960,10 @@ export default function Members() {
                   </div>
 
                   <div className="flex flex-wrap items-center justify-end gap-3 border-t border-gray-200 pt-4">
-                    {selectedMemberDetails.paymentStatus === 1 ? (
-                      <button className="inline-flex cursor-pointer items-center gap-2 rounded-lg bg-emerald-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-emerald-700">
-                        <CreditCard size={16} />
-                        Pay
-                      </button>
-                    ) : null}
+                    <button onClick={openPaymentModal} className="inline-flex cursor-pointer items-center gap-2 rounded-lg bg-emerald-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-emerald-700">
+                      <CreditCard size={16} />
+                      Pay
+                    </button>
                     {!selectedMemberDetails.isSavedFingerprints ? (
                       <button className="inline-flex cursor-pointer items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-blue-700">
                         <Fingerprint size={16} />
@@ -948,6 +976,70 @@ export default function Members() {
                   </div>
                 </div>
               ) : null}
+            </div>
+          </div>
+        </div>,
+        document.body,
+      )}
+
+      {isPayModalOpen && createPortal(
+        <div className="fixed inset-0 z-[90] flex items-center justify-center bg-black/60 px-3 py-4 sm:px-4 sm:py-6">
+          <div className="max-h-[92vh] w-full max-w-2xl overflow-hidden rounded-2xl bg-white shadow-2xl">
+            <div className="flex items-start justify-between border-b border-gray-200 px-5 py-4">
+              <div>
+                <h2 className="text-xl font-semibold text-gray-900 sm:text-2xl">Payment</h2>
+                <p className="mt-1 text-sm text-gray-500">Capture the member payment details.</p>
+              </div>
+              <button onClick={closePaymentModal} className="rounded-full p-2 cursor-pointer text-gray-500 transition hover:bg-gray-100 hover:text-gray-900">
+                <X size={18} />
+              </button>
+            </div>
+
+            <div className="max-h-[calc(92vh-88px)] overflow-y-auto px-5 py-5 sm:px-6 sm:py-6">
+              <div className="space-y-4">
+                <div className="rounded-2xl border border-gray-200 bg-gray-50 px-4 py-4">
+                  <div className="flex items-center justify-between gap-4">
+                    <span className="text-sm font-medium text-gray-600">Price</span>
+                    <span className="text-base font-semibold text-gray-900">
+                      LKR {Number(selectedMemberDetails?.membershipPlanPrice || 0).toLocaleString()}
+                    </span>
+                  </div>
+                </div>
+
+                <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
+                  <label className="mb-3 block text-sm font-medium text-gray-900">Payment Type</label>
+                  <div className="flex flex-wrap gap-4">
+                    <label className="inline-flex items-center cursor-pointer gap-2 rounded-xl border border-gray-200 px-4 py-3 text-sm text-gray-700">
+                      <input type="radio" name="paymentMethod" value="cash" checked={paymentMethod === 'cash'} onChange={() => setPaymentMethod('cash')} />
+                      Cash
+                    </label>
+                    <label className="inline-flex items-center cursor-pointer gap-2 rounded-xl border border-gray-200 px-4 py-3 text-sm text-gray-700">
+                      <input type="radio" name="paymentMethod" value="card" checked={paymentMethod === 'card'} onChange={() => setPaymentMethod('card')} />
+                      Card
+                    </label>
+                  </div>
+                </div>
+
+                <div>
+                  <label className="mb-2 block text-sm font-medium text-gray-900">Remark <span className="text-gray-400 font-normal">(optional)</span></label>
+                  <textarea
+                    value={paymentRemark}
+                    onChange={(event) => setPaymentRemark(event.target.value)}
+                    rows={4}
+                    className="w-full rounded-lg border border-gray-200 px-4 py-3 text-sm outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+                    placeholder="Add a remark about the payment..."
+                  />
+                </div>
+
+                <div className="flex items-center justify-end gap-3 border-t border-gray-200 pt-4">
+                  <button onClick={closePaymentModal} className="rounded-lg border border-gray-200 px-4 py-2 text-sm font-medium text-gray-700 transition hover:bg-gray-50 cursor-pointer">
+                    Cancel
+                  </button>
+                  <button onClick={handleSavePayment} className="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-5 py-2 text-sm font-medium text-white transition hover:bg-blue-700 cursor-pointer">
+                    Save
+                  </button>
+                </div>
+              </div>
             </div>
           </div>
         </div>,
