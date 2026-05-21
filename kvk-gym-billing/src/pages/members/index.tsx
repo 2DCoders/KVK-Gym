@@ -1006,7 +1006,7 @@ export default function Members() {
                       <CreditCard size={16} />
                       Pay
                     </button>
-                    {!selectedMemberDetails.isSavedFingerprints ? (
+                    {!selectedMemberDetails.isSavedFingerprints && selectedMemberDetails.paymentStatus !== 1 ? (
                       <button className="inline-flex cursor-pointer items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-blue-700">
                         <Fingerprint size={16} />
                         Fingerprints
