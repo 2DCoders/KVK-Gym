@@ -1,6 +1,6 @@
 import { createPortal } from 'react-dom';
 import { useEffect, useState } from 'react';
-import { ArrowLeft, ArrowRight, Fingerprint, Loader2, MoreVertical, Plus, Search, UserRound, X, Eye, Edit, Trash2 } from 'lucide-react';
+import { ArrowLeft, ArrowRight, CreditCard, Fingerprint, Loader2, MoreVertical, Plus, Search, UserRound, X, Eye, Edit, Trash2 } from 'lucide-react';
 import { registerMember, getMemberById, getMembers } from '@/services/members-api';
 import { getMembershipPlans } from '@/services/membership-plans-api';
 import Alert from '@/components/ui/alert';
@@ -857,7 +857,7 @@ export default function Members() {
                 <h2 className="text-xl font-semibold text-gray-900 sm:text-2xl">Member Details</h2>
                 <p className="mt-1 text-sm text-gray-500">Complete member profile and membership status.</p>
               </div>
-              <button onClick={closeViewMemberModal} className="rounded-full p-2 text-gray-500 transition hover:bg-gray-100 hover:text-gray-900">
+              <button onClick={closeViewMemberModal} className="rounded-full p-2 cursor-pointer text-gray-500 transition hover:bg-gray-100 hover:text-gray-900">
                 <X size={18} />
               </button>
             </div>
@@ -906,14 +906,43 @@ export default function Members() {
                         <div className="flex items-center justify-between gap-4"><span>Duration</span><span className="font-medium text-gray-900">{selectedMemberDetails.membershipPlanDurationInDays} days</span></div>
                         <div className="flex items-center justify-between gap-4"><span>Start Date</span><span className="font-medium text-gray-900">{formatDisplayDate(selectedMemberDetails.membershipStartDate)}</span></div>
                         <div className="flex items-center justify-between gap-4"><span>End Date</span><span className="font-medium text-gray-900">{formatDisplayDate(selectedMemberDetails.membershipEndDate)}</span></div>
-                        <div className="flex items-center justify-between gap-4"><span>Payment Status</span><span className="font-medium text-gray-900">{paymentStatusLabel(selectedMemberDetails.paymentStatus)}</span></div>
-                        <div className="flex items-center justify-between gap-4"><span>Fingerprints</span><span className="font-medium text-gray-900">{selectedMemberDetails.isSavedFingerprints ? 'Saved' : 'Not Saved'}</span></div>
+                        <div className="flex items-center justify-between gap-4">
+                          <span>Payment Status</span>
+                          <span className={`inline-flex items-center rounded-full px-2.5 py-1 text-xs font-medium ${selectedMemberDetails.paymentStatus === 1
+                            ? 'bg-amber-100 text-amber-700'
+                            : selectedMemberDetails.paymentStatus === 2 || selectedMemberDetails.paymentStatus === 4
+                              ? 'bg-emerald-100 text-emerald-700'
+                              : selectedMemberDetails.paymentStatus === 3
+                                ? 'bg-red-100 text-red-700'
+                                : 'bg-gray-100 text-gray-700'
+                            }`}>
+                            {paymentStatusLabel(selectedMemberDetails.paymentStatus)}
+                          </span>
+                        </div>
+                        <div className="flex items-center justify-between gap-4">
+                          <span>Fingerprints</span>
+                          <span className={`inline-flex items-center rounded-full px-2.5 py-1 text-xs font-medium ${selectedMemberDetails.isSavedFingerprints ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'}`}>
+                            {selectedMemberDetails.isSavedFingerprints ? 'Saved' : 'Not Saved'}
+                          </span>
+                        </div>
                       </div>
                     </div>
                   </div>
 
-                  <div className="flex items-center justify-end border-t border-gray-200 pt-4">
-                    <button onClick={closeViewMemberModal} className="rounded-lg border border-gray-200 px-4 py-2 text-sm font-medium text-gray-700 transition hover:bg-gray-50">
+                  <div className="flex flex-wrap items-center justify-end gap-3 border-t border-gray-200 pt-4">
+                    {selectedMemberDetails.paymentStatus === 1 ? (
+                      <button className="inline-flex cursor-pointer items-center gap-2 rounded-lg bg-emerald-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-emerald-700">
+                        <CreditCard size={16} />
+                        Pay
+                      </button>
+                    ) : null}
+                    {!selectedMemberDetails.isSavedFingerprints ? (
+                      <button className="inline-flex cursor-pointer items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-blue-700">
+                        <Fingerprint size={16} />
+                        Fingerprints
+                      </button>
+                    ) : null}
+                    <button onClick={closeViewMemberModal} className="rounded-lg cursor-pointer border border-gray-200 px-4 py-2 text-sm font-medium text-gray-700 transition hover:bg-gray-50">
                       Close
                     </button>
                   </div>
