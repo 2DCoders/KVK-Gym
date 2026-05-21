@@ -453,7 +453,7 @@ export default function Members() {
   };
 
   const openPaymentModal = () => {
-    if (!selectedMemberDetails || selectedMemberDetails.paymentStatus !== 1) return;
+    if (!selectedMemberDetails) return;
 
     setPaymentMethod('cash');
     setPaymentRemark('');
@@ -712,7 +712,7 @@ export default function Members() {
                 <h2 className="text-xl font-semibold text-gray-900 sm:text-2xl">Register New Member</h2>
                 <p className="mt-1 text-sm text-gray-500">Complete all steps to register the member in the system.</p>
               </div>
-              <button onClick={closeNewMemberModal} className="rounded-full p-2 text-gray-500 transition hover:bg-gray-100 hover:text-gray-900">
+              <button onClick={closeNewMemberModal} className="rounded-full cursor-pointer p-2 text-gray-500 transition hover:bg-gray-100 hover:text-gray-900">
                 <X size={18} />
               </button>
             </div>
