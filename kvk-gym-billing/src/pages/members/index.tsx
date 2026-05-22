@@ -85,7 +85,14 @@ type MembershipPlan = {
 
 type MemberFieldErrors = Partial<Record<keyof MemberForm, string>>;
 
-type MemberEditForm = MemberForm;
+type MemberEditForm = {
+  firstName: string;
+  lastName: string;
+  dateOfBirth: string;
+  gender: string;
+  phone: string;
+  email: string;
+};
 
 const sriLankanMobileRegex = /^7\d{8}$/;
 const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -133,6 +140,44 @@ const validateMemberForm = (form: MemberForm): MemberFieldErrors => {
   return errors;
 };
 
+const validateMemberEditForm = (form: MemberEditForm): MemberFieldErrors => {
+  const errors: MemberFieldErrors = {};
+
+  if (!form.firstName.trim()) {
+    errors.firstName = 'First name is required.';
+  }
+
+  if (!form.lastName.trim()) {
+    errors.lastName = 'Last name is required.';
+  }
+
+  if (!form.dateOfBirth) {
+    errors.dateOfBirth = 'Date of birth is required.';
+  } else {
+    const m = form.dateOfBirth.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+    if (!m) {
+      errors.dateOfBirth = 'Enter a valid date (YYYY-MM-DD).';
+    } else {
+      const y = Number(m[1]);
+      const mo = Number(m[2]);
+      const d = Number(m[3]);
+      const ts = Date.UTC(y, mo - 1, d);
+      if (!isFinite(ts)) errors.dateOfBirth = 'Enter a valid date.';
+    }
+  }
+
+  const phone = form.phone.trim().replace(/[\s-]/g, '');
+  if (!sriLankanMobileRegex.test(phone)) {
+    errors.phone = 'Enter a valid Sri Lankan mobile number without +94 (e.g. 712345678).';
+  }
+
+  if (!emailRegex.test(form.email.trim())) {
+    errors.email = 'Enter a valid email address.';
+  }
+
+  return errors;
+};
+
 const initialMemberForm: MemberForm = {
   firstName: '',
   lastName: '',
@@ -143,7 +188,14 @@ const initialMemberForm: MemberForm = {
   membershipPlan: '',
 };
 
-const initialMemberEditForm: MemberEditForm = { ...initialMemberForm };
+const initialMemberEditForm: MemberEditForm = {
+  firstName: '',
+  lastName: '',
+  dateOfBirth: '',
+  gender: 'Male',
+  phone: '',
+  email: '',
+};
 
 export default function Members() {
   const [members, setMembers] = useState<TableMember[]>([]);
@@ -369,8 +421,6 @@ export default function Members() {
   const start = (page - 1) * pageSize;
   const pageItems = filteredMembers.slice(start, start + pageSize);
   const selectedMembershipPlan = membershipPlans.find((plan) => plan.id === form.membershipPlan);
-  const selectedEditMembershipPlan = membershipPlans.find((plan) => plan.id === editForm.membershipPlan);
-
   const tabs = [
     { key: 'approved', label: 'Approved Members' },
     { key: 'pending', label: 'Pending Members' },
@@ -634,7 +684,6 @@ export default function Members() {
         gender: Number(memberDetails.gender) === 2 ? 'Female' : 'Male',
         phone: memberDetails.phoneNumber ?? '',
         email: memberDetails.email ?? '',
-        membershipPlan: memberDetails.membershipPlanId ?? '',
       });
     } catch {
       setEditMemberError('Failed to load member details. Please try again.');
@@ -670,17 +719,13 @@ export default function Members() {
       const day = Number(m[3]);
       return new Date(Date.UTC(y, mo - 1, day)).toISOString();
     })(editForm.dateOfBirth),
-    memberType: 1,
-    MembershipPlanId: editForm.membershipPlan,
     gender: editForm.gender === 'Female' ? 2 : 1,
-    deviceFingerprintId1: null,
-    deviceFingerprintId2: null,
   });
 
   const handleSaveMemberEdit = async () => {
     if (!editMemberId) return;
 
-    const validationErrors = validateMemberForm(editForm);
+    const validationErrors = validateMemberEditForm(editForm);
     setEditFieldErrors(validationErrors);
 
     if (Object.keys(validationErrors).length > 0) {
@@ -1545,7 +1590,7 @@ export default function Members() {
             <div className="flex items-start justify-between border-b border-gray-200 px-5 py-4">
               <div>
                 <h2 className="text-xl font-semibold text-gray-900 sm:text-2xl">Edit Member</h2>
-                <p className="mt-1 text-sm text-gray-500">Update member details and choose a membership plan.</p>
+                <p className="mt-1 text-sm text-gray-500">Update member details.</p>
               </div>
               <button onClick={closeEditMemberModal} className="rounded-full p-2 cursor-pointer text-gray-500 transition hover:bg-gray-100 hover:text-gray-900">
                 <X size={18} />
@@ -1609,56 +1654,6 @@ export default function Members() {
                       <label className="mb-2 block text-xs font-medium text-gray-900 sm:text-sm">Email <span className="text-red-500">*</span></label>
                       <input type="email" value={editForm.email} onChange={(event) => updateEditField('email', event.target.value)} className="w-full rounded-lg border border-gray-200 px-4 py-2.5 text-sm outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100" placeholder="member@example.com" />
                       <p className={`mt-2 text-[11px] sm:text-xs ${editFieldErrors.email ? 'text-red-600' : 'text-gray-500'}`}>{editFieldErrors.email ?? 'Use a valid email address.'}</p>
-                    </div>
-                  </div>
-
-                  <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
-                    <div className="flex items-start justify-between gap-4">
-                      <div>
-                        <h4 className="text-sm font-semibold uppercase tracking-wide text-gray-500">Member Payment Plan</h4>
-                        <p className="mt-1 text-sm text-gray-500">Select another plan if needed.</p>
-                      </div>
-                      {selectedEditMembershipPlan ? (
-                        <span className="inline-flex items-center rounded-full bg-blue-50 px-2.5 py-1 text-xs font-medium text-blue-700">
-                          Current: LKR {selectedEditMembershipPlan.price.toLocaleString()}
-                        </span>
-                      ) : null}
-                    </div>
-
-                    <div className="mt-4 grid gap-4 md:grid-cols-2">
-                      <div>
-                        <label className="mb-2 block text-xs font-medium text-gray-900 sm:text-sm">Membership Plan <span className="text-red-500">*</span></label>
-                        <select
-                          value={editForm.membershipPlan}
-                          onChange={(event) => updateEditField('membershipPlan', event.target.value)}
-                          disabled={isLoadingPlans || membershipPlans.length === 0}
-                          className="w-full rounded-lg border border-gray-200 px-4 py-2.5 text-sm outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100 disabled:bg-gray-100"
-                        >
-                          <option value="">{isLoadingPlans ? 'Loading plans...' : 'Select a plan'}</option>
-                          {membershipPlans.map((plan) => (
-                            <option key={plan.id} value={plan.id}>
-                              {plan.title} - LKR {plan.price.toLocaleString()}
-                            </option>
-                          ))}
-                        </select>
-                        {plansError ? <p className="mt-2 text-[11px] text-red-600 sm:text-xs">{plansError}</p> : null}
-                        {editFieldErrors.membershipPlan ? <p className="mt-2 text-[11px] text-red-600 sm:text-xs">{editFieldErrors.membershipPlan}</p> : null}
-                      </div>
-
-                      <div className="rounded-2xl border border-gray-200 bg-gray-50 px-4 py-4">
-                        <div className="flex items-center justify-between gap-4">
-                          <span className="text-sm font-medium text-gray-600">Selected Plan</span>
-                          <span className="text-sm font-semibold text-gray-900">
-                            {selectedEditMembershipPlan ? selectedEditMembershipPlan.title : 'No plan selected'}
-                          </span>
-                        </div>
-                        <div className="mt-2 flex items-center justify-between gap-4">
-                          <span className="text-sm font-medium text-gray-600">Price</span>
-                          <span className="text-base font-semibold text-gray-900">
-                            LKR {Number(selectedEditMembershipPlan?.price || 0).toLocaleString()}
-                          </span>
-                        </div>
-                      </div>
                     </div>
                   </div>
 
