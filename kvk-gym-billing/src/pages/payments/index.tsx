@@ -1,25 +1,54 @@
 import { useEffect, useState } from 'react';
 import { Banknote, CreditCard, Download, ReceiptText, Search, TrendingUp } from 'lucide-react';
 import { getFinancialSummary } from '@/services/financial-api';
+import { getPayments } from '@/services/payments-api';
+
+type PaymentRecord = {
+  id: string | number;
+  member: string;
+  amount: number;
+  date: string;
+  method: string;
+};
+
+const formatPaymentDate = (value: string) => {
+  if (!value) return 'N/A';
+
+  if (/^\d{4}-\d{2}-\d{2}$/.test(value)) {
+    return value;
+  }
+
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return value;
+
+  return date.toISOString().slice(0, 10);
+};
+
+const formatPaymentMethod = (value: unknown) => {
+  const methodValue = Number(value);
+
+  if (methodValue === 1) return 'Cash';
+  if (methodValue === 2) return 'Card';
+  if (methodValue === 3) return 'Online';
+
+  const raw = String(value ?? '').trim().toLowerCase();
+  if (raw === '1' || raw === 'cash') return 'Cash';
+  if (raw === '2' || raw === 'card') return 'Card';
+  if (raw === '3' || raw === 'online' || raw === 'paypal') return 'Online';
+
+  return 'Cash';
+};
 
 export default function Payments() {
   const today = new Date();
   const defaultDate = today.toISOString().split('T')[0];
-  const yesterday = new Date(today);
-  yesterday.setDate(today.getDate() - 1);
-  const twoDaysAgo = new Date(today);
-  twoDaysAgo.setDate(today.getDate() - 2);
-
-  const payments = [
-    { id: 1, member: 'John Doe', amount: 9900, date: defaultDate, method: 'Card', status: 'Completed' },
-    { id: 2, member: 'Jane Smith', amount: 14990, date: defaultDate, method: 'Cash', status: 'Completed' },
-    { id: 3, member: 'Mike Johnson', amount: 7990, date: yesterday.toISOString().split('T')[0], method: 'Card', status: 'Pending' },
-    { id: 4, member: 'Sarah Williams', amount: 9900, date: twoDaysAgo.toISOString().split('T')[0], method: 'Card', status: 'Completed' },
-  ];
 
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
   const [selectedDate, setSelectedDate] = useState(defaultDate);
+  const [payments, setPayments] = useState<PaymentRecord[]>([]);
+  const [isLoadingPayments, setIsLoadingPayments] = useState(false);
+  const [paymentsError, setPaymentsError] = useState('');
   const [financialSummary, setFinancialSummary] = useState({
     totalRevenue: 0,
     cashRevenue: 0,
@@ -55,12 +84,47 @@ export default function Payments() {
     loadSummary();
   }, [defaultDate]);
 
-  const filteredPayments = payments.filter((payment) => payment.date === selectedDate);
+  useEffect(() => {
+    const loadPayments = async () => {
+      setIsLoadingPayments(true);
+      setPaymentsError('');
 
-  const total = filteredPayments.length;
+      const startDate = `${selectedDate} 00:00:00+00`;
+      const [year, month, day] = selectedDate.split('-').map(Number);
+      const tomorrow = new Date(Date.UTC(year, month - 1, day));
+      tomorrow.setUTCDate(tomorrow.getUTCDate() + 1);
+      const endDate = `${tomorrow.toISOString().slice(0, 10)} 00:00:00+00`;
+
+      try {
+        const response = await getPayments(startDate, endDate);
+        const rows = response?.additionalData?.response ?? response?.response ?? response ?? [];
+
+        const mappedPayments: PaymentRecord[] = Array.isArray(rows)
+          ? rows.map((payment: any, index: number) => ({
+              id: payment.id ?? index + 1,
+              member: `${payment.firstName ?? payment.memberFirstName ?? ''} ${payment.lastName ?? payment.memberLastName ?? ''}`.trim() || payment.memberName || payment.name || 'Unknown Member',
+              amount: Number(payment.amount ?? payment.totalAmount ?? payment.paymentAmount ?? 0),
+              date: formatPaymentDate(String(payment.date ?? payment.createdAt ?? payment.paymentDate ?? selectedDate)),
+              method: formatPaymentMethod(payment.method ?? payment.paymentMethod ?? payment.paymentType),
+            }))
+          : [];
+
+        setPayments(mappedPayments);
+      } catch {
+        setPayments([]);
+        setPaymentsError('Failed to load payments for the selected date.');
+      } finally {
+        setIsLoadingPayments(false);
+      }
+    };
+
+    loadPayments();
+  }, [selectedDate]);
+
+  const total = payments.length;
   const totalPages = Math.max(1, Math.ceil(total / pageSize));
   const start = (page - 1) * pageSize;
-  const pageItems = filteredPayments.slice(start, start + pageSize);
+  const pageItems = payments.slice(start, start + pageSize);
   const formatLkr = (amount: number) => `LKR ${amount.toLocaleString('en-LK', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
   return (
@@ -177,11 +241,18 @@ export default function Payments() {
                     <th className="py-2 px-3">AMOUNT</th>
                     <th className="py-2 px-3">DATE</th>
                     <th className="py-2 px-3">METHOD</th>
-                    <th className="py-2 px-3">STATUS</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {pageItems.map((payment) => (
+                  {isLoadingPayments ? (
+                    <tr>
+                      <td colSpan={4} className="py-8 text-center text-sm text-gray-500">Loading payments...</td>
+                    </tr>
+                  ) : paymentsError ? (
+                    <tr>
+                      <td colSpan={4} className="py-8 text-center text-sm text-red-600">{paymentsError}</td>
+                    </tr>
+                  ) : pageItems.map((payment) => (
                     <tr key={payment.id} className="border-b border-gray-100 transition-colors duration-300 hover:bg-gray-50/80">
                       <td className="py-2 px-3 align-top">
                         <div className="flex items-center gap-3">
@@ -194,7 +265,6 @@ export default function Payments() {
                           </div>
                           <div>
                             <div className="text-sm font-medium text-gray-900">{payment.member}</div>
-                            <div className="text-xs text-blue-600">#{payment.id}</div>
                           </div>
                         </div>
                       </td>
@@ -202,11 +272,6 @@ export default function Payments() {
                       <td className="py-2 px-3 align-top text-gray-700">{payment.date}</td>
                       <td className="py-2 px-3 align-top">
                         <span className="px-2 py-0.5 rounded-full bg-gray-100 text-gray-700 text-xs">{payment.method}</span>
-                      </td>
-                      <td className="py-2 px-3 align-top">
-                        <span className={`px-2 py-0.5 rounded-full text-xs ${payment.status === 'Completed' ? 'bg-emerald-100 text-emerald-700' : 'bg-orange-100 text-orange-700'}`}>
-                          {payment.status}
-                        </span>
                       </td>
                     </tr>
                   ))}
