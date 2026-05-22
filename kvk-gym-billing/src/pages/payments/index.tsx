@@ -1,5 +1,6 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Banknote, CreditCard, Download, ReceiptText, Search, TrendingUp } from 'lucide-react';
+import { getFinancialSummary } from '@/services/financial-api';
 
 export default function Payments() {
   const today = new Date();
@@ -19,6 +20,40 @@ export default function Payments() {
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
   const [selectedDate, setSelectedDate] = useState(defaultDate);
+  const [financialSummary, setFinancialSummary] = useState({
+    totalRevenue: 0,
+    cashRevenue: 0,
+    creditCardRevenue: 0,
+    payPalRevenue: 0,
+  });
+
+  useEffect(() => {
+    const startDate = `${defaultDate}`;
+    const endDate = `${defaultDate}`;
+
+    const loadSummary = async () => {
+      try {
+        const response = await getFinancialSummary(startDate, endDate);
+        const summary = response?.additionalData?.response ?? response?.response ?? response ?? {};
+
+        setFinancialSummary({
+          totalRevenue: Number(summary.totalRevenue ?? 0),
+          cashRevenue: Number(summary.cashRevenue ?? 0),
+          creditCardRevenue: Number(summary.creditCardRevenue ?? 0),
+          payPalRevenue: Number(summary.payPalRevenue ?? 0),
+        });
+      } catch {
+        setFinancialSummary({
+          totalRevenue: 0,
+          cashRevenue: 0,
+          creditCardRevenue: 0,
+          payPalRevenue: 0,
+        });
+      }
+    };
+
+    loadSummary();
+  }, [defaultDate]);
 
   const filteredPayments = payments.filter((payment) => payment.date === selectedDate);
 
@@ -26,11 +61,6 @@ export default function Payments() {
   const totalPages = Math.max(1, Math.ceil(total / pageSize));
   const start = (page - 1) * pageSize;
   const pageItems = filteredPayments.slice(start, start + pageSize);
-  const revenueTotal = filteredPayments.reduce((sum, payment) => sum + payment.amount, 0);
-  const onlineTotal = filteredPayments.filter((payment) => payment.method !== 'Cash').reduce((sum, payment) => sum + payment.amount, 0);
-  const cashTotal = filteredPayments.filter((payment) => payment.method === 'Cash').reduce((sum, payment) => sum + payment.amount, 0);
-  const cardTotal = filteredPayments.filter((payment) => payment.method === 'Card').reduce((sum, payment) => sum + payment.amount, 0);
-
   const formatLkr = (amount: number) => `LKR ${amount.toLocaleString('en-LK', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
   return (
@@ -38,7 +68,12 @@ export default function Payments() {
       <div className="space-y-4">
         <div className="flex items-start justify-between gap-4">
           <div>
-            <h1 className="text-xl md:text-2xl font-semibold text-gray-900">Payments</h1>
+            <div className="flex items-center gap-3">
+              <h1 className="text-xl md:text-2xl font-semibold text-gray-900">Payments</h1>
+              <span className="inline-flex items-center rounded-full bg-blue-50 px-3 py-1 text-xs font-semibold text-blue-700 ring-1 ring-inset ring-blue-100">
+                Today
+              </span>
+            </div>
             <p className="text-sm text-gray-500 mt-1">Search, review and manage payment records</p>
           </div>
 
@@ -62,33 +97,33 @@ export default function Payments() {
             <div className="flex items-center justify-between gap-3">
               <div>
                 <p className="text-sm font-medium text-gray-500">Total revenue</p>
-                <p className="mt-2 text-2xl font-semibold tracking-tight text-gray-900">{formatLkr(revenueTotal)}</p>
+                <p className="mt-2 text-2xl font-semibold tracking-tight text-gray-900">{formatLkr(financialSummary.totalRevenue)}</p>
               </div>
               <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-emerald-50 text-emerald-600">
                 <TrendingUp size={20} />
               </div>
             </div>
-            <p className="mt-2 text-xs text-gray-500">For the selected date</p>
+            <p className="mt-2 text-xs text-gray-500">For the selected day</p>
           </div>
 
           <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-lg hover:border-gray-300">
             <div className="flex items-center justify-between gap-3">
               <div>
                 <p className="text-sm font-medium text-gray-500">Online total</p>
-                <p className="mt-2 text-2xl font-semibold tracking-tight text-gray-900">{formatLkr(onlineTotal)}</p>
+                <p className="mt-2 text-2xl font-semibold tracking-tight text-gray-900">{formatLkr(financialSummary.payPalRevenue)}</p>
               </div>
               <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-blue-50 text-blue-600">
                 <ReceiptText size={20} />
               </div>
             </div>
-            <p className="mt-2 text-xs text-gray-500">Non-cash payments only</p>
+            <p className="mt-2 text-xs text-gray-500">Online amount</p>
           </div>
 
           <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-lg hover:border-gray-300">
             <div className="flex items-center justify-between gap-3">
               <div>
                 <p className="text-sm font-medium text-gray-500">Cash total</p>
-                <p className="mt-2 text-2xl font-semibold tracking-tight text-gray-900">{formatLkr(cashTotal)}</p>
+                <p className="mt-2 text-2xl font-semibold tracking-tight text-gray-900">{formatLkr(financialSummary.cashRevenue)}</p>
               </div>
               <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-amber-50 text-amber-600">
                 <Banknote size={20} />
@@ -101,7 +136,7 @@ export default function Payments() {
             <div className="flex items-center justify-between gap-3">
               <div>
                 <p className="text-sm font-medium text-gray-500">Card total</p>
-                <p className="mt-2 text-2xl font-semibold tracking-tight text-gray-900">{formatLkr(cardTotal)}</p>
+                <p className="mt-2 text-2xl font-semibold tracking-tight text-gray-900">{formatLkr(financialSummary.creditCardRevenue)}</p>
               </div>
               <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-violet-50 text-violet-600">
                 <CreditCard size={20} />
