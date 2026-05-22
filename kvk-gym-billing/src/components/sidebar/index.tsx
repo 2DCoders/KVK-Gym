@@ -1,11 +1,9 @@
 import { useLocation, useNavigate } from 'react-router-dom';
 import {
-  LayoutDashboard,
   Users,
   Dumbbell,
   CreditCard,
   CheckSquare,
-  BarChart3,
   Settings,
   ChevronDown,
 } from 'lucide-react';

@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { AlertCircle, CheckCircle2, Download, Lock, Search, TrendingUp, Wallet, X } from 'lucide-react';
+import { AlertCircle, CheckCircle2, Download, Lock, TrendingUp, Wallet, X } from 'lucide-react';
 
 export default function Dayend() {
   const today = new Date().toISOString().split('T')[0];
@@ -12,8 +12,6 @@ export default function Dayend() {
     cashDiscrepancy: 0,
   };
 
-  const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = useState(10);
   const [showCloseModal, setShowCloseModal] = useState(false);
   const [closingNotes, setClosingNotes] = useState('');
   const [prevDayAmount, setPrevDayAmount] = useState(5000);
@@ -32,6 +30,7 @@ export default function Dayend() {
     setClosingNotes('');
     setActualCashCount('');
     setCashRemark('');
+    setPrevDayAmount(0);
   };
 
   const formatLkr = (amount: number) => `LKR ${amount.toLocaleString('en-LK', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;

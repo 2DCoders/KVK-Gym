@@ -1,4 +1,4 @@
-import { BarChart3, Download, TrendingUp, Calendar } from 'lucide-react';
+import { Download, Calendar } from 'lucide-react';
 
 export default function Reports() {
   return (
