@@ -63,3 +63,16 @@ export const updateMember = async (memberId: string, memberData: any) => {
     throw error;
   }
 };
+
+export const updateMembershipPlan = async (memberId: string, planData: any) => {
+  try {
+    const response = await axios.post(`${MEMBERS_API_URL}${memberId}/upgrade/`, planData, {
+      headers: {
+        Authorization: `Bearer ${getToken()}`,
+      },
+    });
+    return response.data;
+  } catch (error) {
+    throw error;
+  }
+}
