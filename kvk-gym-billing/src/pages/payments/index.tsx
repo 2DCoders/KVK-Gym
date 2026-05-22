@@ -46,6 +46,7 @@ export default function Payments() {
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
   const [selectedDate, setSelectedDate] = useState(defaultDate);
+  const [searchTerm, setSearchTerm] = useState('');
   const [payments, setPayments] = useState<PaymentRecord[]>([]);
   const [isLoadingPayments, setIsLoadingPayments] = useState(false);
   const [paymentsError, setPaymentsError] = useState('');
@@ -121,10 +122,24 @@ export default function Payments() {
     loadPayments();
   }, [selectedDate]);
 
-  const total = payments.length;
+  useEffect(() => {
+    setPage(1);
+  }, [searchTerm]);
+
+  const normalizedSearchTerm = searchTerm.trim().toLowerCase();
+  const filteredPayments = payments.filter((payment) => {
+    if (!normalizedSearchTerm) return true;
+
+    return [payment.member, payment.amount.toLocaleString(), payment.method, payment.date]
+      .join(' ')
+      .toLowerCase()
+      .includes(normalizedSearchTerm);
+  });
+
+  const total = filteredPayments.length;
   const totalPages = Math.max(1, Math.ceil(total / pageSize));
   const start = (page - 1) * pageSize;
-  const pageItems = payments.slice(start, start + pageSize);
+  const pageItems = filteredPayments.slice(start, start + pageSize);
   const formatLkr = (amount: number) => `LKR ${amount.toLocaleString('en-LK', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
   return (
@@ -144,7 +159,12 @@ export default function Payments() {
           <div className="w-full max-w-md">
             <div className="flex items-center gap-2 bg-white border border-gray-200 rounded-md px-3 py-2 text-sm shadow-sm transition-all duration-300 hover:-translate-y-0.5 hover:shadow-md hover:border-gray-300">
               <Search size={16} className="text-gray-400" />
-              <input className="w-full outline-none text-sm" placeholder="Search by member, amount, method, or date..." />
+              <input
+                value={searchTerm}
+                onChange={(event) => setSearchTerm(event.target.value)}
+                className="w-full outline-none text-sm"
+                placeholder="Search by member, amount, method, or date..."
+              />
             </div>
           </div>
 
