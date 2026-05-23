@@ -76,3 +76,16 @@ export const updateMembershipPlan = async (memberId: string, planData: any) => {
     throw error;
   }
 }
+
+export const softDeleteMember = async (memberId: string) => {
+  try {
+    const response = await axios.post(`${MEMBERS_API_URL}${memberId}/soft-delete/`, {}, {
+      headers: {
+        Authorization: `Bearer ${getToken()}`,
+      },
+    });
+    return response.data;
+  } catch (error) {
+    throw error;
+  }
+}

@@ -1,7 +1,7 @@
 import { createPortal } from 'react-dom';
 import { useEffect, useState } from 'react';
 import { ArrowLeft, ArrowRight, CreditCard, Fingerprint, Loader2, MoreVertical, Plus, Search, UserRound, X, Eye, Edit, Trash2 } from 'lucide-react';
-import { registerMember, getMemberById, getMembers, updateMember, updateMembershipPlan } from '@/services/members-api';
+import { registerMember, getMemberById, getMembers, softDeleteMember, updateMember, updateMembershipPlan } from '@/services/members-api';
 import { fingerPrintSave } from '@/services/fingerprint-api';
 import { processPayment } from '@/services/payment-api';
 import { getMembershipPlans } from '@/services/membership-plans-api';
@@ -31,6 +31,8 @@ type TableMember = {
   gender: string;
   phone: string;
   status: MemberStatus;
+  paymentStatus: number;
+  isSavedFingerprints: boolean;
 };
 
 type MemberDetails = {
@@ -241,6 +243,9 @@ export default function Members() {
   const [membershipPaymentMethod, setMembershipPaymentMethod] = useState<'cash' | 'card'>('cash');
   const [isSavingMembershipChange, setIsSavingMembershipChange] = useState(false);
   const [membershipChangeError, setMembershipChangeError] = useState('');
+  const [deleteMemberTarget, setDeleteMemberTarget] = useState<TableMember | null>(null);
+  const [isDeletingMember, setIsDeletingMember] = useState(false);
+  const [deleteMemberError, setDeleteMemberError] = useState('');
 
   // pagination state
   const [page, setPage] = useState(1);
@@ -351,6 +356,8 @@ export default function Members() {
         gender: Number(member.gender) === 1 ? "Male" : "Female",
         phone: member.phoneNumber ? `+94${member.phoneNumber}` : 'N/A',
         status: mapMembershipStatusToTabStatus(member.membershipStatus),
+        paymentStatus: Number((member as any).paymentStatus ?? 0),
+        isSavedFingerprints: Boolean((member as any).isSavedFingerprints ?? (member as any).fingerprintSaved ?? false),
       }));
 
       setMembers(mappedMembers);
@@ -429,6 +436,7 @@ export default function Members() {
   const pageItems = filteredMembers.slice(start, start + pageSize);
   const selectedMembershipPlan = membershipPlans.find((plan) => plan.id === form.membershipPlan);
   const selectedMembershipChangePlan = membershipPlans.find((plan) => plan.id === membershipPlanId);
+  const canDeleteMember = (member: TableMember) => member.status === 'pending' && member.paymentStatus === 1 && !member.isSavedFingerprints;
   const tabs = [
     { key: 'approved', label: 'Approved Members' },
     { key: 'pending', label: 'Pending Members' },
@@ -748,6 +756,55 @@ export default function Members() {
     setMembershipPaymentMethod('cash');
     setMembershipChangeError('');
     setIsSavingMembershipChange(false);
+  };
+
+  const openDeleteMemberDialog = (member: TableMember) => {
+    if (!canDeleteMember(member)) {
+      setOpenAction(null);
+      return;
+    }
+
+    setOpenAction(null);
+    setDeleteMemberTarget(member);
+    setDeleteMemberError('');
+  };
+
+  const closeDeleteMemberDialog = () => {
+    setDeleteMemberTarget(null);
+    setDeleteMemberError('');
+    setIsDeletingMember(false);
+  };
+
+  const handleConfirmDeleteMember = async () => {
+    if (!deleteMemberTarget) return;
+
+    setIsDeletingMember(true);
+    setDeleteMemberError('');
+
+    try {
+      await softDeleteMember(deleteMemberTarget.id);
+
+      setPageAlert({
+        visible: true,
+        variant: 'success',
+        title: 'Delete Request Sent',
+        description: 'The deletion request has been submitted for super admin approval.',
+      });
+
+      closeDeleteMemberDialog();
+      await fetchMembers();
+    } catch (error: any) {
+      const message = error?.response?.data?.message || error?.message || 'Failed to submit delete request.';
+      setDeleteMemberError(message);
+      setPageAlert({
+        visible: true,
+        variant: 'error',
+        title: 'Delete Failed',
+        description: message,
+      });
+    } finally {
+      setIsDeletingMember(false);
+    }
   };
 
   const buildEditPayload = () => ({
@@ -1115,9 +1172,11 @@ export default function Members() {
                               <button onClick={() => openUpdateFingerprintsModal(p.id)} className="flex items-center gap-2 w-full px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 cursor-pointer">
                                 <Fingerprint size={14} /> Fingerprints
                               </button>
-                              <button onClick={() => { setOpenAction(null); if (confirm(`Delete ${p.name}?`)) { alert(`${p.name} deleted`); } }} className="flex items-center gap-2 w-full px-3 py-2 text-sm text-red-600 hover:bg-gray-50 cursor-pointer">
-                                <Trash2 size={14} /> Delete
-                              </button>
+                              {canDeleteMember(p) ? (
+                                <button onClick={() => openDeleteMemberDialog(p)} className="flex items-center gap-2 w-full px-3 py-2 text-sm text-red-600 hover:bg-gray-50 cursor-pointer">
+                                  <Trash2 size={14} /> Delete
+                                </button>
+                              ) : null}
                             </div>,
                             document.body,
                           )}
@@ -1459,6 +1518,42 @@ export default function Members() {
                   </div>
                 </div>
               )}
+            </div>
+          </div>
+        </div>,
+        document.body,
+      )}
+
+      {deleteMemberTarget && createPortal(
+        <div className="fixed inset-0 z-[90] flex items-center justify-center bg-black/50 px-4 py-6">
+          <div className="w-full max-w-md overflow-hidden rounded-2xl bg-white shadow-2xl">
+            <div className="flex items-start justify-between border-b border-gray-200 px-5 py-4">
+              <div>
+                <h2 className="text-lg font-semibold text-gray-900">Confirm Delete</h2>
+                <p className="mt-1 text-sm text-gray-500">This is a dual authorization process. Super admin can approve or reject the deletion.</p>
+              </div>
+              <button onClick={closeDeleteMemberDialog} className="rounded-full cursor-pointer p-2 text-gray-500 transition hover:bg-gray-100 hover:text-gray-900">
+                <X size={18} />
+              </button>
+            </div>
+
+            <div className="px-5 py-5 space-y-3">
+              <p className="text-sm text-gray-700">Are you sure you want to delete?</p>
+              <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+                <div className="font-medium">{deleteMemberTarget.name}</div>
+                <div className="mt-1 text-amber-800">{deleteMemberTarget.pid}</div>
+              </div>
+              {deleteMemberError ? <p className="text-sm text-red-600">{deleteMemberError}</p> : null}
+            </div>
+
+            <div className="flex items-center justify-end gap-3 border-t border-gray-200 px-5 py-4">
+              <button onClick={closeDeleteMemberDialog} className="rounded-lg cursor-pointer border border-gray-200 bg-white px-4 py-2 text-sm text-gray-700 transition hover:bg-gray-50">
+                Cancel
+              </button>
+              <button onClick={handleConfirmDeleteMember} disabled={isDeletingMember} className="inline-flex cursor-pointer items-center gap-2 rounded-lg bg-red-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-70">
+                {isDeletingMember ? <Loader2 size={14} className="animate-spin" /> : null}
+                Confirm Delete
+              </button>
             </div>
           </div>
         </div>,
