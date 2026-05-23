@@ -1,15 +1,66 @@
-import { Lock } from 'lucide-react';
+import Alert from '@/components/ui/alert';
+import { changePassword } from '@/services/auth-api';
+import { ArrowRight, Loader2, Lock } from 'lucide-react';
 import { useState } from 'react';
 
 export default function SettingsPage() {
-
+    const [pageAlert, setPageAlert] = useState<{ visible: boolean; variant?: 'success' | 'error' | 'warning' | 'info'; title?: string; description?: string }>({ visible: false });
     const cashier = localStorage.getItem('cashier') ? JSON.parse(localStorage.getItem('cashier') as string) : null;
     const [fullName, setFullName] = useState(cashier ? cashier.firstName + ' ' + cashier.lastName : 'Admin User');
     const [email, setEmail] = useState(cashier ? cashier.email : 'admin@kvkgym.com');
+    const [currentPassword, setCurrentPassword] = useState('');
+    const [newPassword, setNewPassword] = useState('');
+    const [confirmPassword, setConfirmPassword] = useState('');
+    const [loading, setLoading] = useState(false);
+
+    const handleChangePassword = async () => {
+
+        if (newPassword !== confirmPassword) {
+            setPageAlert({
+                visible: true,
+                variant: 'error',
+                title: 'Password mismatch',
+                description: 'New password and confirm password do not match. Please check and try again.'
+            })
+            return
+        }
+
+        setLoading(true)
+        try {
+            const body = {
+                userId: cashier.userId,
+                userName: cashier.userName,
+                currentPassword,
+                newPassword
+            }
+
+            await changePassword(body);
+            setPageAlert({
+                visible: true,
+                variant: 'success',
+                title: 'Update Password',
+                description: 'The password has been successfully updated.'
+            })
+        } catch (error: any) {
+            setPageAlert({
+                visible: true,
+                variant: 'error',
+                title: 'Update password failed!',
+                description: error.response.data.message || 'An error occurred while updating the password. Please try again.'
+            });
+        } finally {
+            setLoading(false)
+        }
+    }
 
 
     return (
         <div className="max-w-7xl mx-auto px-4 py-6">
+            {pageAlert.visible && (
+                <div>
+                    <Alert variant={pageAlert.variant as any} title={pageAlert.title} description={pageAlert.description} onClose={() => setPageAlert((s) => ({ ...s, visible: false }))} />
+                </div>
+            )}
             <div className="flex items-center justify-between mb-6">
                 <div>
                     <h1 className="text-xl md:text-3xl font-semibold text-gray-900">Settings</h1>
@@ -62,19 +113,22 @@ export default function SettingsPage() {
                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                                 <div>
                                     <label className="block text-sm text-gray-700 mb-1.5">Current password</label>
-                                    <input type="password" className="w-full px-3 py-1 border rounded-md" />
+                                    <input value={currentPassword} onChange={(e) => setCurrentPassword(e.target.value)} type="password" className="w-full px-3 py-1 border rounded-md" />
                                 </div>
                                 <div>
                                     <label className="block text-sm text-gray-700 mb-1.5">New password</label>
-                                    <input type="password" className="w-full px-3 py-1 border rounded-md" />
+                                    <input value={newPassword} onChange={(e) => setNewPassword(e.target.value)} type="password" className="w-full px-3 py-1 border rounded-md" />
                                 </div>
                             </div>
                             <div>
                                 <label className="block text-sm text-gray-700 mb-1.5">Confirm password</label>
-                                <input type="password" className="w-full px-3 py-1 border rounded-md" />
+                                <input value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} type="password" className="w-full px-3 py-1 border rounded-md" />
                             </div>
                             <div className="flex justify-end">
-                                <button className="inline-flex cursor-pointer items-center gap-2 rounded-lg bg-blue-600 px-5 py-2 text-sm font-medium text-white transition hover:bg-blue-700">Update password</button>
+                                <button disabled={!currentPassword && !newPassword && !confirmPassword} onClick={handleChangePassword} className="inline-flex cursor-pointer items-center gap-2 rounded-lg bg-blue-600 px-5 py-2 text-sm font-medium text-white transition hover:bg-blue-700">
+                                    {loading ? <Loader2 size={16} className="animate-spin" /> : <ArrowRight size={16} />}
+                                    {loading ? "Updating" : "Change Password"}
+                                </button>
                             </div>
                         </div>
                     </section>
