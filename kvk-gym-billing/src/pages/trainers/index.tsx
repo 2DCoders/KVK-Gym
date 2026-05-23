@@ -1,7 +1,7 @@
 import { createPortal } from 'react-dom';
 import { useEffect, useState } from 'react';
 import { ArrowLeft, ArrowRight, CreditCard, Fingerprint, Loader2, MoreVertical, Plus, Search, UserRound, X, Eye, Edit, Trash2 } from 'lucide-react';
-import { registerMember, getMemberById, getMembers, updateMember } from '@/services/members-api';
+import { registerMember, getMemberById, getMembers, softDeleteMember, updateMember } from '@/services/members-api';
 import { fingerPrintSave } from '@/services/fingerprint-api';
 import { processPayment } from '@/services/payment-api';
 import { getMembershipPlans } from '@/services/membership-plans-api';
@@ -31,6 +31,8 @@ type TableTrainer = {
   gender: string;
   phone: string;
   status: TrainerStatus;
+  paymentStatus: number;
+  isSavedFingerprints: boolean;
 };
 
 type TrainerDetails = {
@@ -183,6 +185,10 @@ export default function Trainers() {
   const [isLoadingEditTrainer, setIsLoadingEditTrainer] = useState(false);
   const [editTrainerError, setEditTrainerError] = useState('');
 
+  const [deleteTrainerTarget, setDeleteTrainerTarget] = useState<TableTrainer | null>(null);
+  const [isDeletingTrainer, setIsDeletingTrainer] = useState(false);
+  const [deleteTrainerError, setDeleteTrainerError] = useState('');
+
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
   const [openAction, setOpenAction] = useState<{ id: string; top: number; left: number } | null>(null);
@@ -285,6 +291,8 @@ export default function Trainers() {
         gender: Number(trainer.gender) === 1 ? 'Male' : 'Female',
         phone: trainer.phoneNumber ? `+94${trainer.phoneNumber}` : 'N/A',
         status: mapMembershipStatusToTabStatus(trainer.membershipStatus),
+        paymentStatus: Number((trainer as any).paymentStatus ?? 0),
+        isSavedFingerprints: Boolean((trainer as any).isSavedFingerprints ?? (trainer as any).fingerprintSaved ?? false),
       }));
 
       setTrainers(mappedTrainers);
@@ -363,6 +371,8 @@ export default function Trainers() {
   const pageItems = filteredTrainers.slice(start, start + pageSize);
   const selectedMembershipPlan = membershipPlans.find((plan) => plan.id === form.membershipPlan);
   const selectedEditMembershipPlan = membershipPlans.find((plan) => plan.id === editForm.membershipPlan);
+
+  const canDeleteTrainer = (trainer: TableTrainer) => trainer.status === 'pending' && trainer.paymentStatus === 1 && !trainer.isSavedFingerprints;
 
   const tabs = [
     { key: 'approved', label: 'Approved Trainers' },
@@ -814,6 +824,58 @@ export default function Trainers() {
       )}
       <div className="space-y-4">
         <div className="flex items-start justify-between gap-4">
+
+      {deleteTrainerTarget && createPortal(
+        <div className="fixed inset-0 z-[90] flex items-center justify-center bg-black/50 px-4 py-6">
+          <div className="w-full max-w-md overflow-hidden rounded-2xl bg-white shadow-2xl">
+            <div className="flex items-start justify-between border-b border-gray-200 px-5 py-4">
+              <div>
+                <h2 className="text-lg font-semibold text-gray-900">Confirm Delete</h2>
+                <p className="mt-1 text-sm text-gray-500">This is a dual authorization process. Super admin can approve or reject the deletion.</p>
+              </div>
+              <button onClick={() => { setDeleteTrainerTarget(null); setDeleteTrainerError(''); }} className="rounded-full p-2 text-gray-500 transition hover:bg-gray-100 hover:text-gray-900">
+                <X size={18} />
+              </button>
+            </div>
+
+            <div className="px-5 py-5 space-y-3">
+              <p className="text-sm text-gray-700">Are you sure you want to delete?</p>
+              <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+                <div className="font-medium">{deleteTrainerTarget.name}</div>
+                <div className="mt-1 text-amber-800">{deleteTrainerTarget.pid}</div>
+              </div>
+              {deleteTrainerError ? <p className="text-sm text-red-600">{deleteTrainerError}</p> : null}
+            </div>
+
+            <div className="flex items-center justify-end gap-3 border-t border-gray-200 px-5 py-4">
+              <button onClick={() => { setDeleteTrainerTarget(null); setDeleteTrainerError(''); }} className="rounded-lg border border-gray-200 bg-white px-4 py-2 text-sm text-gray-700 transition hover:bg-gray-50">
+                Cancel
+              </button>
+              <button onClick={async () => {
+                if (!deleteTrainerTarget) return;
+                setIsDeletingTrainer(true);
+                setDeleteTrainerError('');
+                try {
+                  await softDeleteMember(deleteTrainerTarget.id);
+                  setPageAlert({ visible: true, variant: 'success', title: 'Delete Request Sent', description: 'The deletion request has been submitted for super admin approval.' });
+                  setDeleteTrainerTarget(null);
+                  await fetchTrainers();
+                } catch (error:any) {
+                  const message = error?.response?.data?.message || error?.message || 'Failed to submit delete request.';
+                  setDeleteTrainerError(message);
+                  setPageAlert({ visible: true, variant: 'error', title: 'Delete Failed', description: message });
+                } finally {
+                  setIsDeletingTrainer(false);
+                }
+              }} disabled={isDeletingTrainer} className="inline-flex items-center gap-2 rounded-lg bg-red-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-70">
+                {isDeletingTrainer ? <Loader2 size={14} className="animate-spin" /> : null}
+                Confirm Delete
+              </button>
+            </div>
+          </div>
+        </div>,
+        document.body,
+      )}
           <div>
             <h1 className="text-xl md:text-2xl font-semibold text-gray-900">Trainer Registration</h1>
             <p className="text-sm text-gray-500 mt-1">Search for returning trainers or register a new one</p>
@@ -955,9 +1017,11 @@ export default function Trainers() {
                               <button onClick={() => openUpdateFingerprintsModal(trainer.id)} className="flex items-center gap-2 w-full px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 cursor-pointer">
                                 <Fingerprint size={14} /> Fingerprints
                               </button>
-                              <button onClick={() => { setOpenAction(null); if (confirm(`Delete ${trainer.name}?`)) { alert(`${trainer.name} deleted`); } }} className="flex items-center gap-2 w-full px-3 py-2 text-sm text-red-600 hover:bg-gray-50 cursor-pointer">
-                                <Trash2 size={14} /> Delete
-                              </button>
+                              {canDeleteTrainer(trainer) ? (
+                                <button onClick={() => { setOpenAction(null); setDeleteTrainerTarget(trainer); setDeleteTrainerError(''); }} className="flex items-center gap-2 w-full px-3 py-2 text-sm text-red-600 hover:bg-gray-50 cursor-pointer">
+                                  <Trash2 size={14} /> Delete
+                                </button>
+                              ) : null}
                             </div>,
                             document.body,
                           )}
