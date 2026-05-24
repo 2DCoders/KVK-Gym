@@ -1,5 +1,6 @@
-import { CreditCard, Edit, Eye, MoreVertical, Plus, Search } from "lucide-react";
-import { useState } from "react";
+import { getMembershipPlans } from "@/services/membership-plans-api";
+import { ArrowRight, CreditCard, Eye, Loader2, MoreVertical, Plus, Search, UserRound, X } from "lucide-react";
+import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 
 export default function Daypass() {
@@ -8,18 +9,87 @@ export default function Daypass() {
     const [openAction, setOpenAction] = useState<{ id: string; top: number; left: number } | null>(null);
     const [page, setPage] = useState(1);
     const [pageSize, setPageSize] = useState(10);
-    const [isLoadingMembers, setIsLoadingMembers] = useState(false);
-    const [membersError, setMembersError] = useState<string | null>(null);
-    const [members, setMembers] = useState<any[]>([]); // Replace with actual member type
+    const [isLoading, setisLoading] = useState(false);
+    const [isNewDayPassOpen, setIsNewDayPassOpen] = useState(false);
+    const [Error, setError] = useState<string | null>(null);
+    const [submitError, setSubmitError] = useState<string | null>(null);
+    const [isRegistering, setIsRegistering] = useState(false);
+    const [membershipPlans, setMembershipPlans] = useState<any[]>([]); // Replace with actual membership plan type
+    const [isLoadingPlans, setIsLoadingPlans] = useState(false);
+    const [plansError, setPlansError] = useState<string | null>(null);
+    const [form, setForm] = useState({
+        name: "",
+        phone: "",
+        membershipPlan: "",
+    });
+    const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
     const start = (page - 1) * pageSize;
     const total = 0; // Replace with actual total from API
     const totalPages = Math.ceil(total / pageSize);
     const pageItems: any[] = [];
 
-    const openNewDaypassModal = () => {
-        // Logic to open the new daypass registration modal
-        console.log("Open new daypass registration modal");
+    type MembershipPlan = {
+        id: string;
+        title: string;
+        price: number;
     };
+
+    const fetchMembershipPlans = async () => {
+        setIsLoadingPlans(true);
+        try {
+            const response = await getMembershipPlans();
+            const plans = response?.additionalData?.response ?? response?.response ?? response ?? [];
+
+            const mappedPlans: MembershipPlan[] = Array.isArray(plans)
+                ? plans.map((plan: any) => ({
+                    id: String(plan.id),
+                    title: String(plan.title ?? 'Unnamed Plan'),
+                    price: Number(plan.price ?? 0),
+                }))
+                : [];
+
+            setMembershipPlans(mappedPlans);
+            setPlansError('');
+
+            setForm((current) => {
+                if (current.membershipPlan || mappedPlans.length === 0) {
+                    return current;
+                }
+
+                return { ...current, membershipPlan: mappedPlans[0].id };
+            });
+        } catch (error) {
+            setPlansError('Failed to load membership plans. Please try again later.');
+            setMembershipPlans([]);
+        } finally {
+            setIsLoadingPlans(false);
+        }
+    };
+
+    useEffect(() => {
+        fetchMembershipPlans();
+    }, []);
+
+    type Form = {
+        name: string;
+        phone: string;
+        membershipPlan: string;
+    };
+
+    type FieldErrors = Partial<Record<keyof Form, string>>;
+
+
+    const updateField = (field: keyof Form, value: string) => {
+        setForm((current) => ({ ...current, [field]: value }));
+    };
+
+    const openNewDaypassModal = () => {
+        setIsNewDayPassOpen(true);
+    };
+
+    const closeNewDayPassModal = () => {
+        setIsNewDayPassOpen(false);
+    }
 
     return (
         <div className="max-w-7xl mx-auto px-4 py-6">
@@ -41,7 +111,7 @@ export default function Daypass() {
                                 value={searchTerm}
                                 onChange={(event) => setSearchTerm(event.target.value)}
                                 className="w-full outline-none text-sm"
-                                placeholder="Search by name, phone, member ID, or status..."
+                                placeholder="Search by name, phone or status..."
                             />
                         </div>
                     </div>
@@ -60,28 +130,26 @@ export default function Daypass() {
                                 <thead>
                                     <tr className="text-left text-xs text-gray-600 border-b border-gray-100">
                                         <th className="py-2 px-3">MEMBER</th>
-                                        <th className="py-2 px-3">AGE</th>
-                                        <th className="py-2 px-3">GENDER</th>
                                         <th className="py-2 px-3">PHONE</th>
                                         <th className="py-2 px-3">STATUS</th>
                                         <th className="py-2 px-3">ACTIONS</th>
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    {isLoadingMembers ? (
+                                    {isLoading ? (
                                         <tr>
                                             <td colSpan={6} className="py-8">
                                                 <div className="flex items-center justify-center gap-3">
                                                     <div className="w-5 h-5 border-2 border-blue-200 border-t-blue-600 rounded-full animate-spin" />
-                                                    <span className="text-sm text-gray-600">Loading members...</span>
+                                                    <span className="text-sm text-gray-600">Loading day passes...</span>
                                                 </div>
                                             </td>
                                         </tr>
-                                    ) : membersError ? (
+                                    ) : Error ? (
                                         <tr>
                                             <td colSpan={6} className="py-8">
                                                 <div className="flex items-center justify-center">
-                                                    <span className="text-sm text-red-600">{membersError}</span>
+                                                    <span className="text-sm text-red-600">{Error}</span>
                                                 </div>
                                             </td>
                                         </tr>
@@ -89,7 +157,7 @@ export default function Daypass() {
                                         <tr>
                                             <td colSpan={6} className="py-8">
                                                 <div className="flex items-center justify-center">
-                                                    <span className="text-sm text-gray-500">No members found</span>
+                                                    <span className="text-sm text-gray-500">No day passes found</span>
                                                 </div>
                                             </td>
                                         </tr>
@@ -98,15 +166,13 @@ export default function Daypass() {
                                             <tr key={p.id} className="border-b border-gray-100 hover:bg-gray-50">
                                                 <td className="py-2 px-3 align-top">
                                                     <div className="flex items-center gap-3">
-                                                        <div className="w-8 h-8 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center text-sm font-semibold">{p.name.split(' ').map((n : string) => n[0]).slice(0, 2).join('')}</div>
+                                                        <div className="w-8 h-8 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center text-sm font-semibold">{p.name.split(' ').map((n: string) => n[0]).slice(0, 2).join('')}</div>
                                                         <div>
                                                             <div className="text-sm font-medium text-gray-900">{p.name}</div>
                                                             <div className="text-xs text-blue-600">{p.pid}</div>
                                                         </div>
                                                     </div>
                                                 </td>
-                                                <td className="py-2 px-3 align-top text-gray-700">{p.age}</td>
-                                                <td className="py-2 px-3 align-top"><span className="px-2 py-0.5 rounded-full bg-gray-100 text-gray-700 text-xs">{p.gender}</span></td>
                                                 <td className="py-2 px-3 align-top text-gray-700">{p.phone}</td>
                                                 <td className="py-2 px-3 align-top">
                                                     <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${p.status === 'approved'
@@ -177,6 +243,86 @@ export default function Daypass() {
                         </div>
                     </div>
                 </div>
+                {isNewDayPassOpen && createPortal(
+                    <div className="fixed inset-0 z-80 flex items-center justify-center bg-black/50 px-3 py-4 sm:px-4 sm:py-6">
+                        <div className="max-h-[92vh] w-full max-w-4xl overflow-hidden rounded-2xl bg-white shadow-2xl">
+                            <div className="flex items-start justify-between border-b border-gray-200 px-5 py-4">
+                                <div>
+                                    <h2 className="text-xl font-semibold text-gray-900 sm:text-2xl">Register New Day Pass</h2>
+                                    <p className="mt-1 text-sm text-gray-500">Complete all steps to register the day pass in the system.</p>
+                                </div>
+                                <button onClick={closeNewDayPassModal} className="rounded-full cursor-pointer p-2 text-gray-500 transition hover:bg-gray-100 hover:text-gray-900">
+                                    <X size={18} />
+                                </button>
+                            </div>
+
+                            <div className="max-h-[calc(92vh-160px)] overflow-y-auto px-5 py-5 sm:px-6 sm:py-6">
+
+                                <div className="space-y-4">
+                                    <div className="flex items-start gap-3 rounded-2xl border border-gray-200 bg-gray-50 px-4 py-4">
+                                        <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-blue-100 text-blue-600">
+                                            <UserRound size={20} />
+                                        </div>
+                                        <div>
+                                            <h3 className="text-base font-semibold text-gray-900 sm:text-md">Personal Details</h3>
+                                            <p className="text-sm text-gray-500">Basic identification information</p>
+                                        </div>
+                                    </div>
+
+                                    <div className="grid gap-3 md:grid-cols-2 lg:gap-4">
+                                        <div>
+                                            <label className="mb-2 block text-xs font-medium text-gray-900 sm:text-sm">Name <span className="text-red-500">*</span></label>
+                                            <input value={form.name} onChange={(event) => updateField('name', event.target.value)} className="w-full rounded-lg border border-gray-200 px-4 py-2.5 text-sm outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100" placeholder="John" />
+                                            {fieldErrors.name ? <p className="mt-2 text-[11px] text-red-600 sm:text-xs">{fieldErrors.name}</p> : null}
+                                        </div>
+                                        <div>
+                                            <label className="mb-2 block text-xs font-medium text-gray-900 sm:text-sm">Phone No <span className="text-red-500">*</span></label>
+                                            <div className="flex overflow-hidden rounded-lg border border-gray-200 focus-within:border-blue-500 focus-within:ring-2 focus-within:ring-blue-100">
+                                                <span className="border-r border-gray-200 bg-gray-50 px-4 py-2.5 text-sm text-gray-500">+94</span>
+                                                <input value={form.phone} onChange={(event) => updateField('phone', event.target.value)} inputMode="numeric" maxLength={9} className="w-full px-4 py-2.5 text-sm outline-none" placeholder="712 345 678" />
+                                            </div>
+                                            {fieldErrors.phone ? <p className="mt-2 text-[11px] text-red-600 sm:text-xs">{fieldErrors.phone}</p> : null}
+                                        </div>
+                                        <div>
+                                            <label className="mb-2 block text-xs font-medium text-gray-900 sm:text-sm">Membership Plan <span className="text-red-500">*</span></label>
+                                            <select
+                                                value={form.membershipPlan}
+                                                onChange={(event) => updateField('membershipPlan', event.target.value)}
+                                                disabled={isLoadingPlans || membershipPlans.length === 0}
+                                                className="w-full rounded-lg border border-gray-200 px-4 py-2.5 text-sm outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100 disabled:bg-gray-100"
+                                            >
+                                                <option value="">{isLoadingPlans ? 'Loading plans...' : 'Select a plan'}</option>
+                                                {membershipPlans.map((plan) => (
+                                                    <option key={plan.id} value={plan.id}>
+                                                        {plan.title} - LKR {plan.price.toLocaleString()}
+                                                    </option>
+                                                ))}
+                                            </select>
+                                            {plansError ? <p className="mt-2 text-[11px] text-red-600 sm:text-xs">{plansError}</p> : null}
+                                            {fieldErrors.membershipPlan ? <p className="mt-2 text-[11px] text-red-600 sm:text-xs">{fieldErrors.membershipPlan}</p> : null}
+                                        </div>
+                                    </div>
+
+                                    <div className="flex items-center justify-end gap-3 border-t border-gray-200 pt-4 mb-5.5">
+                                        <button onClick={closeNewDayPassModal} className="rounded-lg cursor-pointer border border-gray-200 px-4 py-2 text-sm font-medium text-gray-700 transition hover:bg-gray-50">
+                                            Cancel
+                                        </button>
+                                        <button disabled={isRegistering} className="inline-flex cursor-pointer items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-blue-400">
+                                            {isRegistering ? <Loader2 size={16} className="animate-spin" /> : <ArrowRight size={16} />}
+                                            {isRegistering ? 'Registering...' : 'Submit & Next'}
+                                        </button>
+                                    </div>
+                                    {submitError ? (
+                                        <div className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+                                            {submitError}
+                                        </div>
+                                    ) : null}
+                                </div>
+                            </div>
+                        </div>
+                    </div>,
+                    document.body,
+                )}
             </div>
         </div>
     );
