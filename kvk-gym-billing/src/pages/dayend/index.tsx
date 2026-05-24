@@ -1,8 +1,10 @@
-import { useState } from 'react';
-import { AlertCircle, CheckCircle2, Download, Lock, TrendingUp, Wallet, X } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import { AlertCircle, Banknote, CheckCircle2, CreditCard, Download, Lock, ReceiptText, TrendingUp, Wallet, X } from 'lucide-react';
+import { getFinancialSummary } from '@/services/financial-api';
 
 export default function Dayend() {
-  const today = new Date().toISOString().split('T')[0];
+  const today = new Date();
+  const defaultDate = today.toISOString().split('T')[0];
 
   const dayendData = {
     totalRevenue: 89890,
@@ -18,6 +20,40 @@ export default function Dayend() {
   const [holdNextDayAmount, setHoldNextDayAmount] = useState('');
   const [actualCashCount, setActualCashCount] = useState('');
   const [cashRemark, setCashRemark] = useState('');
+  const [financialSummary, setFinancialSummary] = useState({
+    totalRevenue: 0,
+    cashRevenue: 0,
+    creditCardRevenue: 0,
+    payPalRevenue: 0,
+  });
+
+  useEffect(() => {
+      const startDate = `${defaultDate}`;
+      const endDate = `${defaultDate}`;
+  
+      const loadSummary = async () => {
+        try {
+          const response = await getFinancialSummary(startDate, endDate);
+          const summary = response?.additionalData?.response ?? response?.response ?? response ?? {};
+  
+          setFinancialSummary({
+            totalRevenue: Number(summary.totalRevenue ?? 0),
+            cashRevenue: Number(summary.cashRevenue ?? 0),
+            creditCardRevenue: Number(summary.creditCardRevenue ?? 0),
+            payPalRevenue: Number(summary.payPalRevenue ?? 0),
+          });
+        } catch {
+          setFinancialSummary({
+            totalRevenue: 0,
+            cashRevenue: 0,
+            creditCardRevenue: 0,
+            payPalRevenue: 0,
+          });
+        }
+      };
+  
+      loadSummary();
+    }, [defaultDate]);
 
   const actualCash = actualCashCount ? parseFloat(actualCashCount.replace(/[^\d.-]/g, '')) : 0;
   const discrepancy = (dayendData.totalCash + prevDayAmount) - actualCash;
@@ -56,53 +92,53 @@ export default function Dayend() {
           <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-lg hover:border-gray-300">
             <div className="flex items-center justify-between gap-3">
               <div>
-                <p className="text-sm font-medium text-gray-500">Total Revenue</p>
-                <p className="mt-2 text-2xl font-semibold tracking-tight text-gray-900">{formatLkr(dayendData.totalRevenue)}</p>
+                <p className="text-sm font-medium text-gray-500">Total revenue</p>
+                <p className="mt-2 text-2xl font-semibold tracking-tight text-gray-900">{formatLkr(financialSummary.totalRevenue)}</p>
               </div>
               <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-emerald-50 text-emerald-600">
                 <TrendingUp size={20} />
               </div>
             </div>
-            <p className="mt-2 text-xs text-gray-500">Today's total</p>
+            <p className="mt-2 text-xs text-gray-500">For the selected day</p>
           </div>
 
           <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-lg hover:border-gray-300">
             <div className="flex items-center justify-between gap-3">
               <div>
-                <p className="text-sm font-medium text-gray-500">Total Transactions</p>
-                <p className="mt-2 text-2xl font-semibold tracking-tight text-gray-900">{dayendData.totalTransactions}</p>
+                <p className="text-sm font-medium text-gray-500">Online total</p>
+                <p className="mt-2 text-2xl font-semibold tracking-tight text-gray-900">{formatLkr(financialSummary.payPalRevenue)}</p>
               </div>
               <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-blue-50 text-blue-600">
-                <CheckCircle2 size={20} />
+                <ReceiptText size={20} />
               </div>
             </div>
-            <p className="mt-2 text-xs text-gray-500">Completed payments</p>
+            <p className="mt-2 text-xs text-gray-500">Online amount</p>
           </div>
 
           <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-lg hover:border-gray-300">
             <div className="flex items-center justify-between gap-3">
               <div>
-                <p className="text-sm font-medium text-gray-500">Cash Total</p>
-                <p className="mt-2 text-2xl font-semibold tracking-tight text-gray-900">{formatLkr(dayendData.totalCash)}</p>
+                <p className="text-sm font-medium text-gray-500">Cash total</p>
+                <p className="mt-2 text-2xl font-semibold tracking-tight text-gray-900">{formatLkr(financialSummary.cashRevenue)}</p>
               </div>
               <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-amber-50 text-amber-600">
-                <Wallet size={20} />
+                <Banknote size={20} />
               </div>
             </div>
-            <p className="mt-2 text-xs text-gray-500">Cash collected</p>
+            <p className="mt-2 text-xs text-gray-500">Cash payments only</p>
           </div>
 
           <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-lg hover:border-gray-300">
             <div className="flex items-center justify-between gap-3">
               <div>
-                <p className="text-sm font-medium text-gray-500">Card Total</p>
-                <p className="mt-2 text-2xl font-semibold tracking-tight text-gray-900">{formatLkr(dayendData.totalCard)}</p>
+                <p className="text-sm font-medium text-gray-500">Card total</p>
+                <p className="mt-2 text-2xl font-semibold tracking-tight text-gray-900">{formatLkr(financialSummary.creditCardRevenue)}</p>
               </div>
               <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-violet-50 text-violet-600">
-                <AlertCircle size={20} />
+                <CreditCard size={20} />
               </div>
             </div>
-            <p className="mt-2 text-xs text-gray-500">Card payments</p>
+            <p className="mt-2 text-xs text-gray-500">Card payments only</p>
           </div>
         </div>
 
@@ -116,15 +152,15 @@ export default function Dayend() {
               </div>
               <div className="flex items-center justify-between p-3 rounded-lg bg-gray-50">
                 <span className="text-sm text-gray-600">Expected Cash Total</span>
-                <span className="text-sm font-semibold text-gray-900">{formatLkr(dayendData.totalCash+prevDayAmount)}</span>
+                <span className="text-sm font-semibold text-gray-900">{formatLkr(dayendData.totalCash + prevDayAmount)}</span>
               </div>
               <div className="flex items-center justify-between p-3 rounded-lg border border-gray-200">
                 <label className="text-sm text-gray-600">Actual Cash Count *</label>
-                <input 
+                <input
                   value={actualCashCount}
                   onChange={(e) => setActualCashCount(e.target.value)}
-                  placeholder="LKR 0.00" 
-                  className="w-32 px-3 py-2 text-right text-sm border rounded-lg outline-none focus:ring-2 focus:ring-blue-200 focus:border-blue-500" 
+                  placeholder="LKR 0.00"
+                  className="w-32 px-3 py-2 text-right text-sm border rounded-lg outline-none focus:ring-2 focus:ring-blue-200 focus:border-blue-500"
                 />
               </div>
               <div className={`flex items-center justify-between p-3 rounded-lg border font-medium ${isDiscrepancyZero ? 'border-emerald-100 text-emerald-700' : 'border-red-200 text-red-600'}`}>
@@ -140,33 +176,32 @@ export default function Dayend() {
               {!isDiscrepancyZero && (
                 <div className="flex flex-col gap-2 p-3 rounded-lg border border-gray-100 bg-white">
                   <label className="text-sm text-gray-700 font-medium">Remark (Required) *</label>
-                  <textarea 
+                  <textarea
                     value={cashRemark}
                     onChange={(e) => setCashRemark(e.target.value)}
-                    placeholder="Please provide reason for cash discrepancy..." 
-                    className="w-full px-3 py-2 text-sm border border-gray-100 rounded-lg outline-none focus:ring-2 focus:ring-blue-200 focus:border-blue-500 bg-white" 
+                    placeholder="Please provide reason for cash discrepancy..."
+                    className="w-full px-3 py-2 text-sm border border-gray-100 rounded-lg outline-none focus:ring-2 focus:ring-blue-200 focus:border-blue-500 bg-white"
                     rows={2}
                   />
                 </div>
               )}
               <div className="flex items-center justify-between p-3 rounded-lg border border-gray-100 bg-white">
                 <label className="text-sm text-gray-700 font-medium">Hold for Next Day</label>
-                <input 
-                  type="text" 
+                <input
+                  type="text"
                   value={holdNextDayAmount}
                   onChange={(e) => setHoldNextDayAmount(e.target.value)}
-                  placeholder="LKR 0.00" 
-                  className="w-24 px-3 py-2 text-right text-sm border border-gray-100 rounded-lg outline-none focus:ring-2 focus:ring-blue-200 focus:border-blue-500 bg-white" 
+                  placeholder="LKR 0.00"
+                  className="w-24 px-3 py-2 text-right text-sm border border-gray-100 rounded-lg outline-none focus:ring-2 focus:ring-blue-200 focus:border-blue-500 bg-white"
                 />
               </div>
               <button
                 onClick={() => setShowCloseModal(true)}
                 disabled={!actualCashCount.trim()}
-                className={`w-full flex items-center justify-center gap-2 px-4 py-3 text-white rounded-lg font-medium transition-all duration-300 ${
-                  !actualCashCount.trim() 
-                    ? 'bg-gray-400 cursor-not-allowed' 
+                className={`w-full flex items-center justify-center gap-2 px-4 py-3 text-white rounded-lg font-medium transition-all duration-300 ${!actualCashCount.trim()
+                    ? 'bg-gray-400 cursor-not-allowed'
                     : 'bg-emerald-600 hover:bg-emerald-700 hover:-translate-y-0.5 hover:shadow-lg'
-                }`}
+                  }`}
               >
                 <Lock size={16} />
                 Close Day
@@ -193,7 +228,7 @@ export default function Dayend() {
             <div className="px-6 py-5 space-y-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">Date</label>
-                <input type="date" value={today} disabled className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg bg-gray-50" />
+                <input type="date" value={defaultDate} disabled className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg bg-gray-50" />
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">Closing Notes (Optional)</label>
@@ -216,14 +251,13 @@ export default function Dayend() {
               <button onClick={() => setShowCloseModal(false)} className="px-4 py-2 rounded-lg border border-gray-200 text-gray-700 font-medium transition-all duration-300 hover:bg-gray-50">
                 Cancel
               </button>
-              <button 
-                onClick={handleCloseDay} 
+              <button
+                onClick={handleCloseDay}
                 disabled={!canCloseDay}
-                className={`px-4 py-2 rounded-lg text-white font-medium transition-all duration-300 ${
-                  !canCloseDay 
-                    ? 'bg-gray-400 cursor-not-allowed' 
+                className={`px-4 py-2 rounded-lg text-white font-medium transition-all duration-300 ${!canCloseDay
+                    ? 'bg-gray-400 cursor-not-allowed'
                     : 'bg-emerald-600 hover:bg-emerald-700 hover:-translate-y-0.5 hover:shadow-lg'
-                }`}
+                  }`}
               >
                 Close Day
               </button>
