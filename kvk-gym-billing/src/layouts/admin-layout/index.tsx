@@ -12,9 +12,7 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
 
   const cashier = localStorage.getItem('cashier') ? JSON.parse(localStorage.getItem('cashier') as string) : null;
 
-  useEffect(() => {
-    console.log(cashier?.token);
-    
+  useEffect(() => {    
     if (!cashier?.token) {
       window.location.href = '/';
     }

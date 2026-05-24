@@ -6,6 +6,7 @@ import {
   CheckSquare,
   Settings,
   ChevronDown,
+  Ticket,
 } from 'lucide-react';
 
 interface SidebarProps {
@@ -48,6 +49,13 @@ export default function Sidebar({ isOpen, isMobile, onClose }: SidebarProps) {
       label: 'Trainers',
       icon: Dumbbell,
       path: '/trainers',
+      submenu: null,
+    },
+    {
+      id: 'daypass',
+      label: 'Day Pass',
+      icon: Ticket,
+      path: '/daypass',
       submenu: null,
     },
     {
