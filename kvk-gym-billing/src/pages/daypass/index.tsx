@@ -1,5 +1,5 @@
 import { getMembershipPlans } from "@/services/membership-plans-api";
-import { registerDayPassMember } from "@/services/day-pass-api";
+import { getDayPassMembers, registerDayPassMember } from "@/services/day-pass-api";
 import { ArrowRight, CreditCard, Eye, Loader2, MoreVertical, Plus, Search, UserRound, X } from "lucide-react";
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
@@ -11,14 +11,15 @@ export default function Daypass() {
     const [openAction, setOpenAction] = useState<{ id: string; top: number; left: number } | null>(null);
     const [page, setPage] = useState(1);
     const [pageSize, setPageSize] = useState(10);
-    const [isLoading] = useState(false);
+    const [isLoading, setIsLoading] = useState(false);
     const [isNewDayPassOpen, setIsNewDayPassOpen] = useState(false);
-    const [Error] = useState<string | null>(null);
+    const [Error, setError] = useState<string | null>(null);
     const [isRegistering, setIsRegistering] = useState(false);
     const [pageAlert, setPageAlert] = useState<{ visible: boolean; variant?: 'success' | 'error' | 'warning' | 'info'; title?: string; description?: string }>({ visible: false });
     const [membershipPlans, setMembershipPlans] = useState<any[]>([]); // Replace with actual membership plan type
     const [isLoadingPlans, setIsLoadingPlans] = useState(false);
     const [plansError, setPlansError] = useState<string | null>(null);
+    const [dayPassMembers, setDayPassMembers] = useState<DayPassMember[]>([]);
     const [form, setForm] = useState({
         name: "",
         phone: "",
@@ -26,15 +27,25 @@ export default function Daypass() {
         paymentMethod: "cash" as "cash" | "card",
     });
     const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
-    const start = (page - 1) * pageSize;
-    const total = 0; // Replace with actual total from API
-    const totalPages = Math.ceil(total / pageSize);
-    const pageItems: any[] = [];
-
     type MembershipPlan = {
         id: string;
         title: string;
         price: number;
+    };
+
+    type DayPassMember = {
+        id: string;
+        name: string;
+        mobileNumber: string;
+        date: string;
+        amount: number;
+        membershipPlanId: string;
+        membershipPlanTitle: string;
+        temporaryMembershipNumber: string;
+        paymentType: string;
+        paymentStatus: string;
+        createdAt: string;
+        lastModifiedAt: string;
     };
 
     const fetchMembershipPlans = async () => {
@@ -71,6 +82,43 @@ export default function Daypass() {
 
     useEffect(() => {
         fetchMembershipPlans();
+    }, []);
+
+    const fetchDayPassMembers = async () => {
+        setIsLoading(true);
+        try {
+            const response = await getDayPassMembers();
+            const members = response?.additionalData?.response ?? response?.response ?? response ?? [];
+
+            const mappedMembers: DayPassMember[] = Array.isArray(members)
+                ? members.map((member: any) => ({
+                    id: String(member.id),
+                    name: String(member.name ?? ''),
+                    mobileNumber: String(member.mobileNumber ?? ''),
+                    date: String(member.date ?? ''),
+                    amount: Number(member.amount ?? 0),
+                    membershipPlanId: String(member.membershipPlanId ?? ''),
+                    membershipPlanTitle: String(member.membershipPlanTitle ?? ''),
+                    temporaryMembershipNumber: String(member.temporaryMembershipNumber ?? ''),
+                    paymentType: String(member.paymentType ?? ''),
+                    paymentStatus: String(member.paymentStatus ?? ''),
+                    createdAt: String(member.createdAt ?? ''),
+                    lastModifiedAt: String(member.lastModifiedAt ?? ''),
+                }))
+                : [];
+
+            setDayPassMembers(mappedMembers);
+            setError(null);
+        } catch (error) {
+            setError('Failed to load day pass members. Please try again later.');
+            setDayPassMembers([]);
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+    useEffect(() => {
+        fetchDayPassMembers();
     }, []);
 
     type Form = {
@@ -140,7 +188,7 @@ export default function Daypass() {
                 amount: Number(selectedMembershipPlan?.price ?? 0),
                 membershipPlanId: form.membershipPlan,
                 paymentType: form.paymentMethod === "cash" ? 1 : 2,
-                paymentStatus: 1,
+                paymentStatus: 2,
             });
 
             closeNewDayPassModal();
@@ -159,8 +207,28 @@ export default function Daypass() {
             });
         } finally {
             setIsRegistering(false);
+            fetchDayPassMembers();
         }
     };
+
+    const filteredDayPassMembers = dayPassMembers.filter((member) => {
+        const query = searchTerm.trim().toLowerCase();
+        if (!query) return true;
+
+        return [
+            member.name,
+            member.mobileNumber,
+            member.temporaryMembershipNumber,
+            member.membershipPlanTitle,
+            member.paymentType,
+            member.paymentStatus,
+        ].join(' ').toLowerCase().includes(query);
+    });
+
+    const total = filteredDayPassMembers.length;
+    const start = (page - 1) * pageSize;
+    const totalPages = Math.max(1, Math.ceil(total / pageSize));
+    const pageItems = filteredDayPassMembers.slice(start, start + pageSize);
 
     return (
         <div className="max-w-7xl mx-auto px-4 py-6">
@@ -210,23 +278,24 @@ export default function Daypass() {
                                     <tr className="text-left text-xs text-gray-600 border-b border-gray-100">
                                         <th className="py-2 px-3">MEMBER</th>
                                         <th className="py-2 px-3">PHONE</th>
-                                        <th className="py-2 px-3">STATUS</th>
+                                        <th className="py-2 px-3">PLAN</th>
+                                        <th className="py-2 px-3">PAYMENT</th>
                                         <th className="py-2 px-3">ACTIONS</th>
                                     </tr>
                                 </thead>
                                 <tbody>
                                     {isLoading ? (
                                         <tr>
-                                            <td colSpan={6} className="py-8">
+                                            <td colSpan={5} className="py-8">
                                                 <div className="flex items-center justify-center gap-3">
                                                     <div className="w-5 h-5 border-2 border-blue-200 border-t-blue-600 rounded-full animate-spin" />
-                                                    <span className="text-sm text-gray-600">Loading day passes...</span>
+                                                    <span className="text-sm text-gray-600">Loading day pass members...</span>
                                                 </div>
                                             </td>
                                         </tr>
                                     ) : Error ? (
                                         <tr>
-                                            <td colSpan={6} className="py-8">
+                                            <td colSpan={5} className="py-8">
                                                 <div className="flex items-center justify-center">
                                                     <span className="text-sm text-red-600">{Error}</span>
                                                 </div>
@@ -234,9 +303,9 @@ export default function Daypass() {
                                         </tr>
                                     ) : pageItems.length === 0 ? (
                                         <tr>
-                                            <td colSpan={6} className="py-8">
+                                            <td colSpan={5} className="py-8">
                                                 <div className="flex items-center justify-center">
-                                                    <span className="text-sm text-gray-500">No day passes found</span>
+                                                    <span className="text-sm text-gray-500">No day pass members found</span>
                                                 </div>
                                             </td>
                                         </tr>
@@ -248,19 +317,21 @@ export default function Daypass() {
                                                         <div className="w-8 h-8 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center text-sm font-semibold">{p.name.split(' ').map((n: string) => n[0]).slice(0, 2).join('')}</div>
                                                         <div>
                                                             <div className="text-sm font-medium text-gray-900">{p.name}</div>
-                                                            <div className="text-xs text-blue-600">{p.pid}</div>
+                                                            <div className="text-xs text-blue-600">{p.temporaryMembershipNumber}</div>
                                                         </div>
                                                     </div>
                                                 </td>
-                                                <td className="py-2 px-3 align-top text-gray-700">{p.phone}</td>
+                                                <td className="py-2 px-3 align-top text-gray-700">{p.mobileNumber}</td>
                                                 <td className="py-2 px-3 align-top">
-                                                    <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${p.status === 'approved'
+                                                    <div className="text-sm font-medium text-gray-900">{p.membershipPlanTitle || 'Day Pass'}</div>
+                                                    <div className="text-xs text-gray-500">LKR {p.amount.toLocaleString()}</div>
+                                                </td>
+                                                <td className="py-2 px-3 align-top">
+                                                    <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${p.paymentStatus === 'Paid'
                                                         ? 'bg-emerald-100 text-emerald-700'
-                                                        : p.status === 'pending'
-                                                            ? 'bg-amber-100 text-amber-700'
-                                                            : 'bg-red-100 text-red-700'
+                                                        : 'bg-amber-100 text-amber-700'
                                                         }`}>
-                                                        {p.status === 'approved' ? 'Active' : p.status === 'pending' ? 'Inactive' : 'Blocked'}
+                                                        {p.paymentType} · {p.paymentStatus}
                                                     </span>
                                                 </td>
                                                 <td className="py-2 px-3 align-top text-gray-500">
@@ -368,7 +439,7 @@ export default function Daypass() {
                                                 value={form.membershipPlan}
                                                 onChange={(event) => updateField('membershipPlan', event.target.value)}
                                                 disabled={isLoadingPlans || membershipPlans.length === 0}
-                                                className="w-full rounded-lg border border-gray-200 px-4 py-2.5 text-sm outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100 disabled:bg-gray-100"
+                                                className="w-full cursor-pointer rounded-lg border border-gray-200 px-4 py-2.5 text-sm outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100 disabled:bg-gray-100"
                                             >
                                                 <option value="">{isLoadingPlans ? 'Loading plans...' : 'Select a plan'}</option>
                                                 {membershipPlans.map((plan) => (
@@ -383,7 +454,7 @@ export default function Daypass() {
                                         <div>
                                             <label className="mb-2 block text-xs font-medium text-gray-900 sm:text-sm">Payment Method <span className="text-red-500">*</span></label>
                                             <div className="flex gap-3 rounded-lg border border-gray-200 px-4 py-3">
-                                                <label className="flex items-center gap-2 text-sm text-gray-700">
+                                                <label className="flex items-center gap-2 text-sm cursor-pointer text-gray-700">
                                                     <input
                                                         type="radio"
                                                         name="dayPassPaymentMethod"
@@ -393,7 +464,7 @@ export default function Daypass() {
                                                     />
                                                     Cash
                                                 </label>
-                                                <label className="flex items-center gap-2 text-sm text-gray-700">
+                                                <label className="flex items-center gap-2 text-sm cursor-pointer text-gray-700">
                                                     <input
                                                         type="radio"
                                                         name="dayPassPaymentMethod"

@@ -24,3 +24,16 @@ export const registerDayPassMember = async (memberData: any) => {
     throw error;
   }
 };
+
+export const getDayPassMembers = async () => {
+  try {
+    const response = await axios.get(`${DP_MEMBERS_API_URL}`, {
+      headers: {
+        Authorization: `Bearer ${getToken()}`,
+      },
+    });
+    return response.data;
+  } catch (error) {
+    throw error;
+  }
+};
