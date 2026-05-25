@@ -1,7 +1,9 @@
 import { getMembershipPlans } from "@/services/membership-plans-api";
+import { registerDayPassMember } from "@/services/day-pass-api";
 import { ArrowRight, CreditCard, Eye, Loader2, MoreVertical, Plus, Search, UserRound, X } from "lucide-react";
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
+import Alert from "@/components/ui/alert";
 
 export default function Daypass() {
 
@@ -9,11 +11,11 @@ export default function Daypass() {
     const [openAction, setOpenAction] = useState<{ id: string; top: number; left: number } | null>(null);
     const [page, setPage] = useState(1);
     const [pageSize, setPageSize] = useState(10);
-    const [isLoading, setisLoading] = useState(false);
+    const [isLoading] = useState(false);
     const [isNewDayPassOpen, setIsNewDayPassOpen] = useState(false);
-    const [Error, setError] = useState<string | null>(null);
-    const [submitError, setSubmitError] = useState<string | null>(null);
+    const [Error] = useState<string | null>(null);
     const [isRegistering, setIsRegistering] = useState(false);
+    const [pageAlert, setPageAlert] = useState<{ visible: boolean; variant?: 'success' | 'error' | 'warning' | 'info'; title?: string; description?: string }>({ visible: false });
     const [membershipPlans, setMembershipPlans] = useState<any[]>([]); // Replace with actual membership plan type
     const [isLoadingPlans, setIsLoadingPlans] = useState(false);
     const [plansError, setPlansError] = useState<string | null>(null);
@@ -21,6 +23,7 @@ export default function Daypass() {
         name: "",
         phone: "",
         membershipPlan: "",
+        paymentMethod: "cash" as "cash" | "card",
     });
     const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
     const start = (page - 1) * pageSize;
@@ -74,6 +77,7 @@ export default function Daypass() {
         name: string;
         phone: string;
         membershipPlan: string;
+        paymentMethod: "cash" | "card";
     };
 
     type FieldErrors = Partial<Record<keyof Form, string>>;
@@ -83,16 +87,91 @@ export default function Daypass() {
         setForm((current) => ({ ...current, [field]: value }));
     };
 
+    const validateDayPassForm = (currentForm: Form): FieldErrors => {
+        const errors: FieldErrors = {};
+
+        if (!currentForm.name.trim()) {
+            errors.name = "Name is required.";
+        }
+
+        if (!/^\d{9}$/.test(currentForm.phone.trim())) {
+            errors.phone = "Enter a valid 9-digit mobile number.";
+        }
+
+        if (!currentForm.membershipPlan) {
+            errors.membershipPlan = "Select a membership plan.";
+        }
+
+        return errors;
+    };
+
+    const selectedMembershipPlan = membershipPlans.find((plan) => plan.id === form.membershipPlan);
+
     const openNewDaypassModal = () => {
         setIsNewDayPassOpen(true);
     };
 
     const closeNewDayPassModal = () => {
         setIsNewDayPassOpen(false);
+        setFieldErrors({});
+        setForm({
+            name: "",
+            phone: "",
+            membershipPlan: membershipPlans[0]?.id ?? "",
+            paymentMethod: "cash",
+        });
     }
+
+    const handleRegisterDayPass = async () => {
+        const validationErrors = validateDayPassForm(form);
+        setFieldErrors(validationErrors);
+
+        if (Object.keys(validationErrors).length > 0) {
+            return;
+        }
+
+        setIsRegistering(true);
+
+        try {
+            await registerDayPassMember({
+                name: form.name.trim(),
+                mobileNumber: form.phone.trim(),
+                date: new Date().toISOString(),
+                amount: Number(selectedMembershipPlan?.price ?? 0),
+                membershipPlanId: form.membershipPlan,
+                paymentType: form.paymentMethod === "cash" ? 1 : 2,
+                paymentStatus: 1,
+            });
+
+            closeNewDayPassModal();
+            setPageAlert({
+                visible: true,
+                variant: 'success',
+                title: 'Day pass registered',
+                description: 'The day pass member was registered successfully.',
+            });
+        } catch (error) {
+            setPageAlert({
+                visible: true,
+                variant: 'error',
+                title: 'Registration failed',
+                description: 'Failed to register day pass. Please try again.',
+            });
+        } finally {
+            setIsRegistering(false);
+        }
+    };
 
     return (
         <div className="max-w-7xl mx-auto px-4 py-6">
+                        {pageAlert.visible && (
+                            <Alert
+                                variant={pageAlert.variant as any}
+                                title={pageAlert.title}
+                                description={pageAlert.description}
+                                onClose={() => setPageAlert((current) => ({ ...current, visible: false }))}
+                            />
+                        )}
             <div className="space-y-4">
                 <div className="flex items-start justify-between gap-4">
                     <div>
@@ -301,22 +380,48 @@ export default function Daypass() {
                                             {plansError ? <p className="mt-2 text-[11px] text-red-600 sm:text-xs">{plansError}</p> : null}
                                             {fieldErrors.membershipPlan ? <p className="mt-2 text-[11px] text-red-600 sm:text-xs">{fieldErrors.membershipPlan}</p> : null}
                                         </div>
+                                        <div>
+                                            <label className="mb-2 block text-xs font-medium text-gray-900 sm:text-sm">Payment Method <span className="text-red-500">*</span></label>
+                                            <div className="flex gap-3 rounded-lg border border-gray-200 px-4 py-3">
+                                                <label className="flex items-center gap-2 text-sm text-gray-700">
+                                                    <input
+                                                        type="radio"
+                                                        name="dayPassPaymentMethod"
+                                                        value="cash"
+                                                        checked={form.paymentMethod === "cash"}
+                                                        onChange={() => setForm((current) => ({ ...current, paymentMethod: "cash" }))}
+                                                    />
+                                                    Cash
+                                                </label>
+                                                <label className="flex items-center gap-2 text-sm text-gray-700">
+                                                    <input
+                                                        type="radio"
+                                                        name="dayPassPaymentMethod"
+                                                        value="card"
+                                                        checked={form.paymentMethod === "card"}
+                                                        onChange={() => setForm((current) => ({ ...current, paymentMethod: "card" }))}
+                                                    />
+                                                    Card
+                                                </label>
+                                            </div>
+                                        </div>
                                     </div>
+
+                                    {selectedMembershipPlan ? (
+                                        <div className="rounded-2xl border border-blue-100 bg-blue-50 px-4 py-3 text-sm text-blue-800">
+                                            Selected plan: <span className="font-semibold">{selectedMembershipPlan.title}</span> · LKR {selectedMembershipPlan.price.toLocaleString()} · Payment via <span className="font-semibold">{form.paymentMethod === "card" ? "Card" : "Cash"}</span>
+                                        </div>
+                                    ) : null}
 
                                     <div className="flex items-center justify-end gap-3 border-t border-gray-200 pt-4 mb-5.5">
                                         <button onClick={closeNewDayPassModal} className="rounded-lg cursor-pointer border border-gray-200 px-4 py-2 text-sm font-medium text-gray-700 transition hover:bg-gray-50">
                                             Cancel
                                         </button>
-                                        <button disabled={isRegistering} className="inline-flex cursor-pointer items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-blue-400">
+                                        <button onClick={handleRegisterDayPass} disabled={isRegistering} className="inline-flex cursor-pointer items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-blue-400">
                                             {isRegistering ? <Loader2 size={16} className="animate-spin" /> : <ArrowRight size={16} />}
-                                            {isRegistering ? 'Registering...' : 'Submit & Next'}
+                                            {isRegistering ? 'Registering...' : 'Register Day Pass'}
                                         </button>
                                     </div>
-                                    {submitError ? (
-                                        <div className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
-                                            {submitError}
-                                        </div>
-                                    ) : null}
                                 </div>
                             </div>
                         </div>
