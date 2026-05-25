@@ -1,6 +1,6 @@
 import { getMembershipPlans } from "@/services/membership-plans-api";
-import { getDayPassMembers, registerDayPassMember } from "@/services/day-pass-api";
-import { ArrowRight, CreditCard, Eye, Loader2, MoreVertical, Plus, Search, UserRound, X } from "lucide-react";
+import { deleteDayPassMember, getDayPassMembers, registerDayPassMember } from "@/services/day-pass-api";
+import { ArrowRight, Eye, Loader2, MoreVertical, Plus, Search, Trash2, UserRound, X } from "lucide-react";
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import Alert from "@/components/ui/alert";
@@ -20,6 +20,11 @@ export default function Daypass() {
     const [isLoadingPlans, setIsLoadingPlans] = useState(false);
     const [plansError, setPlansError] = useState<string | null>(null);
     const [dayPassMembers, setDayPassMembers] = useState<DayPassMember[]>([]);
+    const [isViewDayPassOpen, setIsViewDayPassOpen] = useState(false);
+    const [selectedDayPassMember, setSelectedDayPassMember] = useState<DayPassMember | null>(null);
+    const [deleteDayPassTarget, setDeleteDayPassTarget] = useState<DayPassMember | null>(null);
+    const [isDeletingDayPass, setIsDeletingDayPass] = useState(false);
+    const [deleteDayPassError, setDeleteDayPassError] = useState('');
     const [form, setForm] = useState({
         name: "",
         phone: "",
@@ -121,6 +126,18 @@ export default function Daypass() {
         fetchDayPassMembers();
     }, []);
 
+    useEffect(() => {
+        const handleDocClick = () => setOpenAction(null);
+
+        if (openAction) {
+            document.addEventListener('mousedown', handleDocClick);
+        }
+
+        return () => {
+            document.removeEventListener('mousedown', handleDocClick);
+        };
+    }, [openAction]);
+
     type Form = {
         name: string;
         phone: string;
@@ -170,6 +187,17 @@ export default function Daypass() {
         });
     }
 
+    const openViewDayPassModal = (member: DayPassMember) => {
+        setOpenAction(null);
+        setSelectedDayPassMember(member);
+        setIsViewDayPassOpen(true);
+    };
+
+    const closeViewDayPassModal = () => {
+        setIsViewDayPassOpen(false);
+        setSelectedDayPassMember(null);
+    };
+
     const handleRegisterDayPass = async () => {
         const validationErrors = validateDayPassForm(form);
         setFieldErrors(validationErrors);
@@ -208,6 +236,50 @@ export default function Daypass() {
         } finally {
             setIsRegistering(false);
             fetchDayPassMembers();
+        }
+    };
+
+    const openDeleteDayPassDialog = (member: DayPassMember) => {
+        setOpenAction(null);
+        setDeleteDayPassTarget(member);
+        setDeleteDayPassError('');
+    };
+
+    const closeDeleteDayPassDialog = () => {
+        setDeleteDayPassTarget(null);
+        setDeleteDayPassError('');
+        setIsDeletingDayPass(false);
+    };
+
+    const handleConfirmDeleteDayPass = async () => {
+        if (!deleteDayPassTarget) return;
+
+        setIsDeletingDayPass(true);
+        setDeleteDayPassError('');
+
+        try {
+            await deleteDayPassMember(deleteDayPassTarget.id);
+
+            setPageAlert({
+                visible: true,
+                variant: 'success',
+                title: 'Day pass deleted',
+                description: 'The day pass member was deleted successfully.',
+            });
+
+            closeDeleteDayPassDialog();
+            fetchDayPassMembers();
+        } catch (error: any) {
+            const message = error?.response?.data?.message || error?.message || 'Failed to delete day pass member.';
+            setDeleteDayPassError(message);
+            setPageAlert({
+                visible: true,
+                variant: 'error',
+                title: 'Delete Failed',
+                description: message,
+            });
+        } finally {
+            setIsDeletingDayPass(false);
         }
     };
 
@@ -351,11 +423,11 @@ export default function Daypass() {
 
                                                     {openAction && openAction.id === p.id && createPortal(
                                                         <div style={{ position: 'fixed', top: openAction.top, left: openAction.left, width: 176 }} onMouseDown={(e) => e.stopPropagation()} className="rounded-md bg-white border shadow-lg z-50">
-                                                            <button className="flex items-center gap-2 w-full px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 cursor-pointer">
+                                                            <button onClick={() => openViewDayPassModal(p)} className="flex items-center gap-2 w-full px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 cursor-pointer">
                                                                 <Eye size={14} /> View
                                                             </button>
-                                                            <button className="flex items-center gap-2 w-full px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 cursor-pointer">
-                                                                <CreditCard size={14} /> Membership
+                                                            <button onClick={() => openDeleteDayPassDialog(p)} className="flex items-center gap-2 w-full px-3 py-2 text-sm text-red-600 hover:bg-gray-50 cursor-pointer">
+                                                                <Trash2 size={14} /> Delete
                                                             </button>
                                                         </div>,
                                                         document.body,
@@ -491,6 +563,114 @@ export default function Daypass() {
                                         <button onClick={handleRegisterDayPass} disabled={isRegistering} className="inline-flex cursor-pointer items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-blue-400">
                                             {isRegistering ? <Loader2 size={16} className="animate-spin" /> : <ArrowRight size={16} />}
                                             {isRegistering ? 'Registering...' : 'Register Day Pass'}
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>,
+                    document.body,
+                )}
+
+                {deleteDayPassTarget && createPortal(
+                    <div className="fixed inset-0 z-90 flex items-center justify-center bg-black/50 px-4 py-6">
+                        <div className="w-full max-w-md overflow-hidden rounded-2xl bg-white shadow-2xl">
+                            <div className="flex items-start justify-between border-b border-gray-200 px-5 py-4">
+                                <div>
+                                    <h2 className="text-lg font-semibold text-gray-900">Confirm Delete</h2>
+                                    <p className="mt-1 text-sm text-gray-500">This action will remove the selected day pass member.</p>
+                                </div>
+                                <button onClick={closeDeleteDayPassDialog} className="rounded-full cursor-pointer p-2 text-gray-500 transition hover:bg-gray-100 hover:text-gray-900">
+                                    <X size={18} />
+                                </button>
+                            </div>
+
+                            <div className="px-5 py-5 space-y-3">
+                                <p className="text-sm text-gray-700">Are you sure you want to delete?</p>
+                                <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+                                    <div className="font-medium">{deleteDayPassTarget.name}</div>
+                                    <div className="mt-1 text-amber-800">{deleteDayPassTarget.temporaryMembershipNumber}</div>
+                                </div>
+                                {deleteDayPassError ? <p className="text-sm text-red-600">{deleteDayPassError}</p> : null}
+                            </div>
+
+                            <div className="flex items-center justify-end gap-3 border-t border-gray-200 px-5 py-4">
+                                <button onClick={closeDeleteDayPassDialog} className="rounded-lg cursor-pointer border border-gray-200 bg-white px-4 py-2 text-sm text-gray-700 transition hover:bg-gray-50">
+                                    Cancel
+                                </button>
+                                <button onClick={handleConfirmDeleteDayPass} disabled={isDeletingDayPass} className="inline-flex cursor-pointer items-center gap-2 rounded-lg bg-red-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-70">
+                                    {isDeletingDayPass ? <Loader2 size={14} className="animate-spin" /> : null}
+                                    Confirm Delete
+                                </button>
+                            </div>
+                        </div>
+                    </div>,
+                    document.body,
+                )}
+
+                {isViewDayPassOpen && selectedDayPassMember && createPortal(
+                    <div className="fixed inset-0 z-80 flex items-center justify-center bg-black/50 px-3 py-4 sm:px-4 sm:py-6">
+                        <div className="max-h-[92vh] w-full max-w-4xl overflow-hidden rounded-2xl bg-white shadow-2xl">
+                            <div className="flex items-start justify-between border-b border-gray-200 px-5 py-4">
+                                <div>
+                                    <h2 className="text-xl font-semibold text-gray-900 sm:text-2xl">Day Pass Details</h2>
+                                    <p className="mt-1 text-sm text-gray-500">View the selected day pass member information.</p>
+                                </div>
+                                <button onClick={closeViewDayPassModal} className="rounded-full cursor-pointer p-2 text-gray-500 transition hover:bg-gray-100 hover:text-gray-900">
+                                    <X size={18} />
+                                </button>
+                            </div>
+
+                            <div className="max-h-[calc(92vh-88px)] overflow-y-auto px-5 py-5 sm:px-6 sm:py-6">
+                                <div className="space-y-5">
+                                    <div className="flex items-start gap-3 rounded-2xl border border-gray-200 bg-gray-50 px-4 py-4">
+                                        <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-blue-100 text-blue-600">
+                                            <UserRound size={20} />
+                                        </div>
+                                        <div>
+                                            <h3 className="text-base font-semibold text-gray-900 sm:text-md">Member Details</h3>
+                                            <p className="text-sm text-gray-500">Day pass member record overview</p>
+                                        </div>
+                                    </div>
+
+                                    <div className="grid gap-3 md:grid-cols-2 lg:gap-4">
+                                        <div className="rounded-2xl border border-gray-200 bg-white p-4">
+                                            <div className="text-xs font-medium uppercase tracking-wide text-gray-500">Name</div>
+                                            <div className="mt-1 text-sm font-semibold text-gray-900">{selectedDayPassMember.name}</div>
+                                        </div>
+                                        <div className="rounded-2xl border border-gray-200 bg-white p-4">
+                                            <div className="text-xs font-medium uppercase tracking-wide text-gray-500">Temporary Membership No</div>
+                                            <div className="mt-1 text-sm font-semibold text-gray-900">{selectedDayPassMember.temporaryMembershipNumber}</div>
+                                        </div>
+                                        <div className="rounded-2xl border border-gray-200 bg-white p-4">
+                                            <div className="text-xs font-medium uppercase tracking-wide text-gray-500">Mobile Number</div>
+                                            <div className="mt-1 text-sm font-semibold text-gray-900">{selectedDayPassMember.mobileNumber}</div>
+                                        </div>
+                                        <div className="rounded-2xl border border-gray-200 bg-white p-4">
+                                            <div className="text-xs font-medium uppercase tracking-wide text-gray-500">Membership Plan</div>
+                                            <div className="mt-1 text-sm font-semibold text-gray-900">{selectedDayPassMember.membershipPlanTitle || 'Day Pass'}</div>
+                                        </div>
+                                        <div className="rounded-2xl border border-gray-200 bg-white p-4">
+                                            <div className="text-xs font-medium uppercase tracking-wide text-gray-500">Amount</div>
+                                            <div className="mt-1 text-sm font-semibold text-gray-900">LKR {selectedDayPassMember.amount.toLocaleString()}</div>
+                                        </div>
+                                        <div className="rounded-2xl border border-gray-200 bg-white p-4">
+                                            <div className="text-xs font-medium uppercase tracking-wide text-gray-500">Payment</div>
+                                            <div className="mt-1 text-sm font-semibold text-gray-900">{selectedDayPassMember.paymentType} · {selectedDayPassMember.paymentStatus}</div>
+                                        </div>
+                                        <div className="rounded-2xl border border-gray-200 bg-white p-4">
+                                            <div className="text-xs font-medium uppercase tracking-wide text-gray-500">Date</div>
+                                            <div className="mt-1 text-sm font-semibold text-gray-900">{new Date(selectedDayPassMember.date).toLocaleString()}</div>
+                                        </div>
+                                        <div className="rounded-2xl border border-gray-200 bg-white p-4">
+                                            <div className="text-xs font-medium uppercase tracking-wide text-gray-500">Created At</div>
+                                            <div className="mt-1 text-sm font-semibold text-gray-900">{new Date(selectedDayPassMember.createdAt).toLocaleString()}</div>
+                                        </div>
+                                    </div>
+
+                                    <div className="flex items-center justify-end gap-3 border-t border-gray-200 pt-4">
+                                        <button onClick={closeViewDayPassModal} className="rounded-lg cursor-pointer border border-gray-200 px-4 py-2 text-sm font-medium text-gray-700 transition hover:bg-gray-50">
+                                            Close
                                         </button>
                                     </div>
                                 </div>

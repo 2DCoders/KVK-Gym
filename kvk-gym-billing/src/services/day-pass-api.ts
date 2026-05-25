@@ -37,3 +37,16 @@ export const getDayPassMembers = async () => {
     throw error;
   }
 };
+
+export const deleteDayPassMember = async (memberId: string) => {
+  try {
+    const response = await axios.delete(`${DP_MEMBERS_API_URL}${memberId}/`, {
+        headers: {
+            Authorization: `Bearer ${getToken()}`,
+        },
+    });
+    return response.data;
+  } catch (error) {
+    throw error;
+  }
+};
