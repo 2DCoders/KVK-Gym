@@ -77,6 +77,7 @@ type MemberRegistrationPayload = {
   gender: number;
   deviceFingerprintId1: string | null;
   deviceFingerprintId2: string | null;
+  password: string;
 };
 
 type MembershipPlan = {
@@ -480,6 +481,7 @@ export default function Members() {
       const day = Number(m[3]);
       return new Date(Date.UTC(y, mo - 1, day)).toISOString();
     })(form.dateOfBirth),
+    password: form.firstName.trim(),
     memberType: 1,
     MembershipPlanId: form.membershipPlan,
     gender: form.gender === 'Female' ? 2 : 1,
