@@ -1047,7 +1047,7 @@ export default function Trainers() {
                   <option value={25}>25</option>
                 </select>
               </div>
-              <button onClick={() => setPage(Math.max(1, page - 1))} disabled={page === 1} className="px-3 py-1 rounded-md border bg-white text-sm disabled:opacity-50">Prev</button>
+              <button onClick={() => setPage(Math.max(1, page - 1))} disabled={page === 1} className="px-3 py-1 cursor-pointer rounded-md border bg-white text-sm disabled:opacity-50">Prev</button>
               <div className="flex items-center gap-1">
                 {Array.from({ length: totalPages }).map((_, i) => (
                   <button key={i} onClick={() => setPage(i + 1)} className={`px-2 py-1 text-sm rounded-md ${page === i + 1 ? 'bg-gray-900 text-white' : 'bg-white border'}`}>
@@ -1055,7 +1055,7 @@ export default function Trainers() {
                   </button>
                 ))}
               </div>
-              <button onClick={() => setPage(Math.min(totalPages, page + 1))} disabled={page === totalPages} className="px-3 py-1 rounded-md border bg-white text-sm disabled:opacity-50">Next</button>
+              <button onClick={() => setPage(Math.min(totalPages, page + 1))} disabled={page === totalPages} className="px-3 py-1 cursor-pointer rounded-md border bg-white text-sm disabled:opacity-50">Next</button>
             </div>
           </div>
         </div>
