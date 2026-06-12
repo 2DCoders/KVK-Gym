@@ -75,6 +75,7 @@ type TrainerRegistrationPayload = {
   memberType: number;
   MembershipPlanId: string;
   gender: number;
+  password: string;
   deviceFingerprintId1: string | null;
   deviceFingerprintId2: string | null;
 };
@@ -418,6 +419,7 @@ export default function Trainers() {
       return new Date(Date.UTC(y, mo - 1, day)).toISOString();
     })(form.dateOfBirth),
     memberType: 2,
+    password: form.firstName.trim(),
     MembershipPlanId: form.membershipPlan,
     gender: form.gender === 'Female' ? 2 : 1,
     deviceFingerprintId1: null,
