@@ -1,21 +1,22 @@
+import Alert from "@/components/ui/alert";
+import { getDayPassMembers, registerDayPassMember } from "@/services/day-pass-api";
 import { getMembershipPlans } from "@/services/membership-plans-api";
-import { ArrowRight, CreditCard, Eye, Loader2, MoreVertical, Plus, Search, UserRound, X } from "lucide-react";
+import { CreditCard, Loader2, Plus, Search, UserRound, X } from "lucide-react";
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 
 export default function Daypass() {
 
     const [searchTerm, setSearchTerm] = useState("");
-    const [openAction, setOpenAction] = useState<{ id: string; top: number; left: number } | null>(null);
     const [page, setPage] = useState(1);
     const [pageSize, setPageSize] = useState(10);
     const [isLoading, setisLoading] = useState(false);
     const [isNewDayPassOpen, setIsNewDayPassOpen] = useState(false);
     const [Error, setError] = useState<string | null>(null);
-    const [submitError, setSubmitError] = useState<string | null>(null);
     const [isRegistering, setIsRegistering] = useState(false);
     const [membershipPlans, setMembershipPlans] = useState<any[]>([]); // Replace with actual membership plan type
     const [isLoadingPlans, setIsLoadingPlans] = useState(false);
+    const [pageAlert, setPageAlert] = useState<{ visible: boolean; variant?: 'success' | 'error' | 'warning' | 'info'; title?: string; description?: string }>({ visible: false });
     const [plansError, setPlansError] = useState<string | null>(null);
     const [form, setForm] = useState({
         name: "",
@@ -23,23 +24,111 @@ export default function Daypass() {
         membershipPlan: "",
     });
     const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
+    const [paymentMethod, setPaymentMethod] = useState<"cash" | "card">("cash");
+    const [pageItems, setPageItems] = useState<any[]>([]); // Replace with actual day pass member type
+
     const start = (page - 1) * pageSize;
     const total = 0; // Replace with actual total from API
     const totalPages = Math.ceil(total / pageSize);
-    const pageItems: any[] = [];
 
+    const validateForm = () => {
+        const errors: FieldErrors = {};
+
+        // Name
+        if (!form.name.trim()) {
+            errors.name = "Name is required";
+        } else if (form.name.trim().length < 3) {
+            errors.name = "Name must be at least 3 characters";
+        }
+
+        // Phone
+        if (!form.phone.trim()) {
+            errors.phone = "Phone number is required";
+        } else if (!/^\d{9}$/.test(form.phone)) {
+            errors.phone = "Enter a valid 9-digit mobile number";
+        }
+
+        // Membership Plan
+        if (!form.membershipPlan) {
+            errors.membershipPlan = "Please select a membership plan";
+        }
+
+        // Payment Method
+        if (!paymentMethod) {
+            errors.paymentMethod = "Please select a payment method";
+        }
+
+        setFieldErrors(errors);
+
+        return Object.keys(errors).length === 0;
+    };
     type MembershipPlan = {
         id: string;
         title: string;
         price: number;
     };
 
-    setFieldErrors({}); // Clear field errors when form changes
-    setisLoading(false); // Reset loading state when form changes
-    setError(null); // Clear error when form changes
-    setSubmitError(null); // Clear submit error when form changes
-    setIsRegistering(false); // Reset registering state when form changes
+    const handleGetDayPasses = async () => {
 
+        setisLoading(true);
+        setError(null);
+        try {
+            const res = await getDayPassMembers();
+            setPageItems(res);
+        } catch (error) {
+            setError('Failed to load day passes. Please try again later.');
+        }
+        setisLoading(false);
+    }
+
+    useEffect(() => {
+        handleGetDayPasses();
+    }, [page, pageSize, searchTerm]);
+
+    const handleDayPassRegistration = async () => {
+
+        if (!validateForm()) {
+            return;
+        }
+
+        setIsRegistering(true);
+
+        const body = {
+            name: form.name,
+            mobileNumber: form.phone,
+            membershipPlanId: form.membershipPlan,
+            amount:
+                membershipPlans.find((p) => p.id === form.membershipPlan)?.price ?? 0,
+            paymentType: paymentMethod === "cash" ? 1 : 2,
+            paymentStatus: 2,
+        };
+
+        try {
+            const response = await registerDayPassMember(body);
+            setPageAlert({ visible: true, variant: 'success', title: 'Day Pass Registered', description: `Day pass for ${response.name} has been successfully registered.` });
+            setForm({ name: "", phone: "", membershipPlan: "" });
+            setFieldErrors({});
+            closeNewDayPassModal();
+            handleGetDayPasses();
+        } catch (error) {
+            setPageAlert({ visible: true, variant: 'error', title: 'Registration Failed', description: 'Failed to register day pass. Please try again.' });
+        } finally {
+            setIsRegistering(false);
+        }
+
+    }
+
+    const updateField = (field: keyof Form, value: string) => {
+        setForm((current) => ({
+            ...current,
+            [field]: value,
+        }));
+
+        setFieldErrors((current) => ({
+            ...current,
+            [field]: undefined,
+        }));
+    };
 
     const fetchMembershipPlans = async () => {
         setIsLoadingPlans(true);
@@ -83,11 +172,11 @@ export default function Daypass() {
         membershipPlan: string;
     };
 
-    type FieldErrors = Partial<Record<keyof Form, string>>;
-
-
-    const updateField = (field: keyof Form, value: string) => {
-        setForm((current) => ({ ...current, [field]: value }));
+    type FieldErrors = {
+        name?: string;
+        phone?: string;
+        membershipPlan?: string;
+        paymentMethod?: string;
     };
 
     const openNewDaypassModal = () => {
@@ -100,6 +189,11 @@ export default function Daypass() {
 
     return (
         <div className="max-w-7xl mx-auto px-4 py-6">
+            {pageAlert.visible && (
+                <div>
+                    <Alert variant={pageAlert.variant as any} title={pageAlert.title} description={pageAlert.description} onClose={() => setPageAlert((s) => ({ ...s, visible: false }))} />
+                </div>
+            )}
             <div className="space-y-4">
                 <div className="flex items-start justify-between gap-4">
                     <div>
@@ -139,7 +233,6 @@ export default function Daypass() {
                                         <th className="py-2 px-3">MEMBER</th>
                                         <th className="py-2 px-3">PHONE</th>
                                         <th className="py-2 px-3">STATUS</th>
-                                        <th className="py-2 px-3">ACTIONS</th>
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -180,43 +273,16 @@ export default function Daypass() {
                                                         </div>
                                                     </div>
                                                 </td>
-                                                <td className="py-2 px-3 align-top text-gray-700">{p.phone}</td>
+                                                <td className="py-2 px-3 align-top text-gray-700">{p.mobileNumber}</td>
                                                 <td className="py-2 px-3 align-top">
-                                                    <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${p.status === 'approved'
+                                                    <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${p.paymentStatus === 'Paid'
                                                         ? 'bg-emerald-100 text-emerald-700'
-                                                        : p.status === 'pending'
+                                                        : p.paymentStatus === 'Unpaid'
                                                             ? 'bg-amber-100 text-amber-700'
                                                             : 'bg-red-100 text-red-700'
                                                         }`}>
-                                                        {p.status === 'approved' ? 'Active' : p.status === 'pending' ? 'Inactive' : 'Blocked'}
+                                                        {p.paymentStatus === 'Paid' ? 'Paid' : p.paymentStatus === 'Unpaid' ? 'Unpaid' : 'Overdue'}
                                                     </span>
-                                                </td>
-                                                <td className="py-2 px-3 align-top text-gray-500">
-                                                    <div className="relative inline-block">
-                                                        <button onClick={(e) => {
-                                                            e.stopPropagation();
-                                                            const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
-                                                            const menuWidth = 144; // w-36
-                                                            let left = rect.right - menuWidth;
-                                                            left = Math.max(8, Math.min(left, window.innerWidth - menuWidth - 8));
-                                                            const top = rect.bottom + 8;
-                                                            setOpenAction(openAction && openAction.id === p.id ? null : { id: p.id, top, left });
-                                                        }} className="p-1.5 rounded-full hover:bg-gray-100 transition cursor-pointer">
-                                                            <MoreVertical size={14} />
-                                                        </button>
-                                                    </div>
-
-                                                    {openAction && openAction.id === p.id && createPortal(
-                                                        <div style={{ position: 'fixed', top: openAction.top, left: openAction.left, width: 176 }} onMouseDown={(e) => e.stopPropagation()} className="rounded-md bg-white border shadow-lg z-50">
-                                                            <button className="flex items-center gap-2 w-full px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 cursor-pointer">
-                                                                <Eye size={14} /> View
-                                                            </button>
-                                                            <button className="flex items-center gap-2 w-full px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 cursor-pointer">
-                                                                <CreditCard size={14} /> Membership
-                                                            </button>
-                                                        </div>,
-                                                        document.body,
-                                                    )}
                                                 </td>
                                             </tr>
                                         ))
@@ -279,34 +345,115 @@ export default function Daypass() {
                                     <div className="grid gap-3 md:grid-cols-2 lg:gap-4">
                                         <div>
                                             <label className="mb-2 block text-xs font-medium text-gray-900 sm:text-sm">Name <span className="text-red-500">*</span></label>
-                                            <input value={form.name} onChange={(event) => updateField('name', event.target.value)} className="w-full rounded-lg border border-gray-200 px-4 py-2.5 text-sm outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100" placeholder="John" />
-                                            {fieldErrors.name ? <p className="mt-2 text-[11px] text-red-600 sm:text-xs">{fieldErrors.name}</p> : null}
+                                            <input
+                                                value={form.name}
+                                                onChange={(e) => updateField("name", e.target.value)}
+                                                className={`w-full rounded-lg px-4 py-2.5 text-sm outline-none transition
+    ${fieldErrors.name
+                                                        ? "border border-red-500"
+                                                        : "border border-gray-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+                                                    }`}
+                                            />
+
+                                            {fieldErrors.name && (
+                                                <p className="mt-1 text-xs text-red-600">
+                                                    {fieldErrors.name}
+                                                </p>
+                                            )}
                                         </div>
                                         <div>
                                             <label className="mb-2 block text-xs font-medium text-gray-900 sm:text-sm">Phone No <span className="text-red-500">*</span></label>
-                                            <div className="flex overflow-hidden rounded-lg border border-gray-200 focus-within:border-blue-500 focus-within:ring-2 focus-within:ring-blue-100">
+                                            <div
+                                                className={`flex overflow-hidden rounded-lg
+    ${fieldErrors.phone
+                                                        ? "border border-red-500"
+                                                        : "border border-gray-200 focus-within:border-blue-500 focus-within:ring-2 focus-within:ring-blue-100"
+                                                    }`}
+                                            >
                                                 <span className="border-r border-gray-200 bg-gray-50 px-4 py-2.5 text-sm text-gray-500">+94</span>
                                                 <input value={form.phone} onChange={(event) => updateField('phone', event.target.value)} inputMode="numeric" maxLength={9} className="w-full px-4 py-2.5 text-sm outline-none" placeholder="712 345 678" />
                                             </div>
-                                            {fieldErrors.phone ? <p className="mt-2 text-[11px] text-red-600 sm:text-xs">{fieldErrors.phone}</p> : null}
+                                            {fieldErrors.phone && (
+                                                <p className="mt-2 text-[11px] text-red-600 sm:text-xs">
+                                                    {fieldErrors.phone}
+                                                </p>
+                                            )}
                                         </div>
                                         <div>
                                             <label className="mb-2 block text-xs font-medium text-gray-900 sm:text-sm">Membership Plan <span className="text-red-500">*</span></label>
                                             <select
                                                 value={form.membershipPlan}
-                                                onChange={(event) => updateField('membershipPlan', event.target.value)}
-                                                disabled={isLoadingPlans || membershipPlans.length === 0}
-                                                className="w-full rounded-lg border border-gray-200 px-4 py-2.5 text-sm outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100 disabled:bg-gray-100"
+                                                onChange={(e) =>
+                                                    updateField("membershipPlan", e.target.value)
+                                                }
+                                                className={`w-full rounded-lg px-4 py-2.5 text-sm outline-none
+    ${fieldErrors.membershipPlan
+                                                        ? "border border-red-500"
+                                                        : "border border-gray-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+                                                    }`}
                                             >
                                                 <option value="">{isLoadingPlans ? 'Loading plans...' : 'Select a plan'}</option>
-                                                {membershipPlans.map((plan) => (
-                                                    <option key={plan.id} value={plan.id}>
-                                                        {plan.title} - LKR {plan.price.toLocaleString()}
-                                                    </option>
-                                                ))}
+                                                {membershipPlans
+                                                    .filter((plan) => plan.title === "Day Pass")
+                                                    .map((plan) => (
+                                                        <option key={plan.id} value={plan.id}>
+                                                            {plan.title} - LKR {plan.price.toLocaleString()}
+                                                        </option>
+                                                    ))}
                                             </select>
                                             {plansError ? <p className="mt-2 text-[11px] text-red-600 sm:text-xs">{plansError}</p> : null}
-                                            {fieldErrors.membershipPlan ? <p className="mt-2 text-[11px] text-red-600 sm:text-xs">{fieldErrors.membershipPlan}</p> : null}
+                                            {fieldErrors.membershipPlan && (
+                                                <p className="mt-1 text-xs text-red-600">
+                                                    {fieldErrors.membershipPlan}
+                                                </p>
+                                            )}
+                                        </div>
+                                        <div className="rounded-xl border border-gray-200 bg-gray-50 p-4 md:col-span-2">
+                                            <label className="mb-3 block text-sm font-medium text-gray-900">
+                                                Payment Type
+                                                <span className="text-red-500 ml-1">*</span>
+                                            </label>
+
+                                            <div className="flex flex-wrap gap-4">
+                                                <label
+                                                    className={`inline-flex items-center cursor-pointer gap-2 rounded-lg border px-4 py-3 text-sm transition
+                                                        ${paymentMethod === "cash"
+                                                            ? "border-blue-500 bg-blue-50 text-blue-700"
+                                                            : "border-gray-200 bg-white text-gray-700"
+                                                        }`}
+                                                >
+                                                    <input
+                                                        type="radio"
+                                                        name="regPaymentMethod"
+                                                        value="cash"
+                                                        checked={paymentMethod === "cash"}
+                                                        onChange={() => setPaymentMethod("cash")}
+                                                    />
+                                                    Cash
+                                                </label>
+
+                                                <label
+                                                    className={`inline-flex items-center cursor-pointer gap-2 rounded-lg border px-4 py-3 text-sm transition
+                                                        ${paymentMethod === "card"
+                                                            ? "border-blue-500 bg-blue-50 text-blue-700"
+                                                            : "border-gray-200 bg-white text-gray-700"
+                                                        }`}
+                                                >
+                                                    <input
+                                                        type="radio"
+                                                        name="regPaymentMethod"
+                                                        value="card"
+                                                        checked={paymentMethod === "card"}
+                                                        onChange={() => setPaymentMethod("card")}
+                                                    />
+                                                    Card
+                                                </label>
+                                                {fieldErrors.paymentMethod && (
+                                                    <p className="mt-2 text-xs text-red-600">
+                                                        {fieldErrors.paymentMethod}
+                                                    </p>
+                                                )}
+                                            </div>
                                         </div>
                                     </div>
 
@@ -314,16 +461,24 @@ export default function Daypass() {
                                         <button onClick={closeNewDayPassModal} className="rounded-lg cursor-pointer border border-gray-200 px-4 py-2 text-sm font-medium text-gray-700 transition hover:bg-gray-50">
                                             Cancel
                                         </button>
-                                        <button disabled={isRegistering} className="inline-flex cursor-pointer items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-blue-400">
-                                            {isRegistering ? <Loader2 size={16} className="animate-spin" /> : <ArrowRight size={16} />}
-                                            {isRegistering ? 'Registering...' : 'Submit & Next'}
+                                        <button
+                                            onClick={handleDayPassRegistration}
+                                            disabled={isRegistering}
+                                            className="inline-flex cursor-pointer items-center gap-2 rounded-lg bg-emerald-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-emerald-700 disabled:cursor-not-allowed disabled:bg-emerald-400"
+                                        >
+                                            {isRegistering ? (
+                                                <>
+                                                    <Loader2 size={16} className="animate-spin" />
+                                                    Processing...
+                                                </>
+                                            ) : (
+                                                <>
+                                                    <CreditCard size={16} />
+                                                    Pay & Register
+                                                </>
+                                            )}
                                         </button>
                                     </div>
-                                    {submitError ? (
-                                        <div className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
-                                            {submitError}
-                                        </div>
-                                    ) : null}
                                 </div>
                             </div>
                         </div>
