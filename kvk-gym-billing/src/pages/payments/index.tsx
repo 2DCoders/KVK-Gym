@@ -11,34 +11,6 @@ type PaymentRecord = {
   method: string;
 };
 
-const formatPaymentDate = (value: string) => {
-  if (!value) return 'N/A';
-
-  if (/^\d{4}-\d{2}-\d{2}$/.test(value)) {
-    return value;
-  }
-
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return value;
-
-  return date.toISOString().slice(0, 10);
-};
-
-const formatPaymentMethod = (value: unknown) => {
-  const methodValue = Number(value);
-
-  if (methodValue === 1) return 'Cash';
-  if (methodValue === 2) return 'Card';
-  if (methodValue === 3) return 'Online';
-
-  const raw = String(value ?? '').trim().toLowerCase();
-  if (raw === '1' || raw === 'cash') return 'Cash';
-  if (raw === '2' || raw === 'card') return 'Card';
-  if (raw === '3' || raw === 'online' || raw === 'paypal') return 'Online';
-
-  return 'Cash';
-};
-
 export default function Payments() {
   const today = new Date();
   const defaultDate = today.toISOString().split('T')[0];
@@ -56,20 +28,6 @@ export default function Payments() {
     creditCardRevenue: 0,
     payPalRevenue: 0,
   });
-
-  const toUtcDateTime = (date: string, endOfDay = false) => {
-  const [year, month, day] = date.split('-').map(Number);
-
-  const d = new Date(Date.UTC(year, month - 1, day));
-
-  if (endOfDay) {
-    d.setUTCHours(23, 59, 59, 999);
-  } else {
-    d.setUTCHours(0, 0, 0, 0);
-  }
-
-  return d.toISOString().replace('Z', '+00');
-};
 
   useEffect(() => {
     const startDate = `${defaultDate}`;
@@ -104,39 +62,39 @@ export default function Payments() {
   }, [selectedDate]);
 
   const loadPayments = async () => {
-  setIsLoadingPayments(true);
-  setPaymentsError('');
+    setIsLoadingPayments(true);
+    setPaymentsError('');
 
-  const from = selectedDate;
-  const to = selectedDate; // or next day if needed
+    const from = selectedDate;
+    const to = selectedDate; // or next day if needed
 
-  try {
-    const response = await getPayments(from, to);
+    try {
+      const response = await getPayments(from, to);
 
-    const rows =
-      response?.additionalData?.response ??
-      response?.response ??
-      response ??
-      [];
+      const rows =
+        response?.additionalData?.response ??
+        response?.response ??
+        response ??
+        [];
 
-    const mappedPayments = Array.isArray(rows)
-      ? rows.map((payment: any, index: number) => ({
+      const mappedPayments = Array.isArray(rows)
+        ? rows.map((payment: any, index: number) => ({
           id: payment.id ?? index + 1,
           member: `${payment.firstName ?? ''} ${payment.lastName ?? ''}`.trim(),
           amount: Number(payment.amount ?? 0),
           date: payment.date ?? selectedDate,
           method: payment.method ?? 'Cash',
         }))
-      : [];
+        : [];
 
-    setPayments(mappedPayments);
-  } catch {
-    setPayments([]);
-    setPaymentsError('Failed to load payments for the selected date.');
-  } finally {
-    setIsLoadingPayments(false);
-  }
-};
+      setPayments(mappedPayments);
+    } catch {
+      setPayments([]);
+      setPaymentsError('Failed to load payments for the selected date.');
+    } finally {
+      setIsLoadingPayments(false);
+    }
+  };
 
   useEffect(() => {
     setPage(1);
