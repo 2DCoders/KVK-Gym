@@ -735,7 +735,7 @@ export default function Members() {
 
     try {
       const response = await getMemberById(memberId);
-      const member = response?.additionalData?.response ?? response?.response ?? null;
+      const member = response;
 
       if (!member) {
         setMembershipChangeError('Unable to load member details for membership change.');
