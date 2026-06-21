@@ -177,7 +177,7 @@ export default function Sidebar({ isOpen, isMobile, onClose }: SidebarProps) {
                 </div>
                 <div className="min-w-0 flex-1">
                   <p className="text-sm font-semibold text-gray-900 truncate">{cashier?.firstName} {cashier?.lastName}</p>
-                  <p className="text-xs text-gray-500">Gym Cashier</p>
+                  <p className="text-xs text-gray-500">{cashier?.email}</p>
                 </div>
               </div>
             )}
