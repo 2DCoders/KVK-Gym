@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { AlertCircle, Banknote, CheckCircle2, CreditCard, Download, Lock, ReceiptText, TrendingUp, Wallet, X } from 'lucide-react';
+import { Banknote, CreditCard, Download, Lock, ReceiptText, TrendingUp, X } from 'lucide-react';
 import { getFinancialSummary } from '@/services/financial-api';
 
 export default function Dayend() {

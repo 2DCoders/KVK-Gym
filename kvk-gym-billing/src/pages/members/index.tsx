@@ -592,8 +592,8 @@ export default function Members() {
 
     try {
       const response = await getMemberById(memberId);
-      const member = response?.additionalData?.response ?? response?.response ?? null;
-
+      const member = response;
+      
       if (!member) {
         setMemberDetailsError('Unable to load member details.');
         return;
@@ -651,7 +651,7 @@ export default function Members() {
 
     try {
       const response = await getMemberById(memberId);
-      const member = response?.additionalData?.response ?? response?.response ?? null;
+      const member = response;
 
       if (!member) {
         setMemberDetailsError('Unable to load member details.');
@@ -685,7 +685,7 @@ export default function Members() {
 
     try {
       const response = await getMemberById(memberId);
-      const member = response?.additionalData?.response ?? response?.response ?? null;
+      const member = response;
 
       if (!member) {
         setEditMemberError('Unable to load member details for editing.');

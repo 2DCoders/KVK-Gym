@@ -528,7 +528,7 @@ export default function Trainers() {
 
     try {
       const response = await getMemberById(trainerId);
-      const trainer = response?.additionalData?.response ?? response?.response ?? null;
+      const trainer = response;
 
       if (!trainer) {
         setTrainerDetailsError('Unable to load trainer details.');
@@ -587,7 +587,7 @@ export default function Trainers() {
 
     try {
       const response = await getMemberById(trainerId);
-      const trainer = response?.additionalData?.response ?? response?.response ?? null;
+      const trainer = response;
 
       if (!trainer) {
         setTrainerDetailsError('Unable to load trainer details.');
@@ -621,7 +621,7 @@ export default function Trainers() {
 
     try {
       const response = await getMemberById(trainerId);
-      const trainer = response?.additionalData?.response ?? response?.response ?? null;
+      const trainer = response;
 
       if (!trainer) {
         setEditTrainerError('Unable to load trainer details for editing.');

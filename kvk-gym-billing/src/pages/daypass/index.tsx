@@ -34,6 +34,13 @@ export default function Daypass() {
         price: number;
     };
 
+    setFieldErrors({}); // Clear field errors when form changes
+    setisLoading(false); // Reset loading state when form changes
+    setError(null); // Clear error when form changes
+    setSubmitError(null); // Clear submit error when form changes
+    setIsRegistering(false); // Reset registering state when form changes
+
+
     const fetchMembershipPlans = async () => {
         setIsLoadingPlans(true);
         try {
