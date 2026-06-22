@@ -12,12 +12,13 @@ const getToken = () => {
   return cashier ? cashier.token : null;
 };
 
-export const getDayEndData = async (date: string) => {
+export const getDayEndData = async (date?: string) => {
   try {
-    const response = await axios.get(`${DAYEND_API_URL}?date=${date}`, {
+    const response = await axios.get(DAYEND_API_URL, {
       headers: {
         Authorization: `Bearer ${getToken()}`,
       },
+      params: date ? { date } : {},
     });
 
     return response.data;
