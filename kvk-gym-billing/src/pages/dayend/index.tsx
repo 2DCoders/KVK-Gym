@@ -68,15 +68,13 @@ export default function Dayend() {
     }
   };
 
-    const actualCash = actualCashCount
+  const actualCash = actualCashCount
     ? parseFloat(actualCashCount.replace(/[^\d.-]/g, ""))
     : 0;
-    
+
   const holdAmount = Number(holdNextDayAmount || 0);
 
   const isHoldAmountValid = holdAmount <= actualCash;
-
-
 
   const discrepancy = financialSummary.cashRevenue + prevDayAmount - actualCash;
   const isDiscrepancyZero = discrepancy === 0;
@@ -321,16 +319,19 @@ export default function Dayend() {
                     className="w-24 px-3 py-2 text-right text-sm border border-gray-100 rounded-lg outline-none focus:ring-2 focus:ring-blue-200 focus:border-blue-500 bg-white"
                   />
                 </div>
-                  {holdNextDayAmount &&
-                    Number(holdNextDayAmount) >
-                      Number(actualCashCount || 0) && (
-                      <p className="text-xs text-red-500 mt-1">
-                        Hold amount cannot exceed actual cash count.
-                      </p>
-                    )}
+                {holdNextDayAmount &&
+                  Number(holdNextDayAmount) > Number(actualCashCount || 0) && (
+                    <p className="text-xs text-red-500 mt-1">
+                      Hold amount cannot exceed actual cash count.
+                    </p>
+                  )}
                 <button
                   onClick={() => setShowCloseModal(true)}
-                  disabled={!actualCashCount.trim() || !isHoldAmountValid || (!isDiscrepancyZero && !cashRemark.trim())}
+                  disabled={
+                    !actualCashCount.trim() ||
+                    !isHoldAmountValid ||
+                    (!isDiscrepancyZero && !cashRemark.trim())
+                  }
                   className={`w-full flex items-center justify-center gap-2 px-4 py-3 text-white rounded-lg font-medium transition-all duration-300 cursor-pointer ${
                     !actualCashCount.trim() || !isHoldAmountValid
                       ? "bg-gray-400 cursor-not-allowed"
@@ -350,79 +351,80 @@ export default function Dayend() {
         </div>
       )}
 
-      {showCloseModal && (
+      {showCloseModal &&
         createPortal(
-        <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/50 px-4 py-6">
-          <div className="w-full max-w-md rounded-2xl bg-white shadow-2xl overflow-hidden">
-            <div className="flex items-center justify-between border-b border-gray-200 px-6 py-4">
-              <h2 className="text-lg font-semibold text-gray-900">
-                Close Business Day
-              </h2>
-              <button
-                onClick={() => setShowCloseModal(false)}
-                className="rounded-full p-2 text-gray-500 transition hover:bg-gray-100 hover:text-gray-900 cursor-pointer"
-              >
-                <X size={18} />
-              </button>
-            </div>
+          <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/50 px-4 py-6">
+            <div className="w-full max-w-md rounded-2xl bg-white shadow-2xl overflow-hidden">
+              <div className="flex items-center justify-between border-b border-gray-200 px-6 py-4">
+                <h2 className="text-lg font-semibold text-gray-900">
+                  Close Business Day
+                </h2>
+                <button
+                  onClick={() => setShowCloseModal(false)}
+                  className="rounded-full p-2 text-gray-500 transition hover:bg-gray-100 hover:text-gray-900 cursor-pointer"
+                >
+                  <X size={18} />
+                </button>
+              </div>
 
-            <div className="px-6 py-5 space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Date
-                </label>
-                <input
-                  type="date"
-                  value={dayEndData?.currentDate?.split("T")[0] || defaultDate}
-                  disabled
-                  className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg bg-gray-50"
-                />
+              <div className="px-6 py-5 space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Date
+                  </label>
+                  <input
+                    type="date"
+                    value={
+                      dayEndData?.currentDate?.split("T")[0] || defaultDate
+                    }
+                    disabled
+                    className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg bg-gray-50"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Closing Notes (Optional)
+                  </label>
+                  <textarea
+                    value={closingNotes}
+                    onChange={(e) => setClosingNotes(e.target.value)}
+                    placeholder="Add any notes about today's operations..."
+                    className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg outline-none focus:ring-2 focus:ring-blue-200 focus:border-blue-500"
+                    rows={4}
+                  />
+                </div>
+                <div className="rounded-lg bg-emerald-50 border border-emerald-100 p-3">
+                  <p className="text-xs text-emerald-700">
+                    <span className="font-semibold">Summary:</span> Total
+                    Revenue {formatLkr(financialSummary.totalRevenue)} •{" "}
+                    {financialSummary.totalTransactions} transactions
+                  </p>
+                </div>
               </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Closing Notes (Optional)
-                </label>
-                <textarea
-                  value={closingNotes}
-                  onChange={(e) => setClosingNotes(e.target.value)}
-                  placeholder="Add any notes about today's operations..."
-                  className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg outline-none focus:ring-2 focus:ring-blue-200 focus:border-blue-500"
-                  rows={4}
-                />
-              </div>
-              <div className="rounded-lg bg-emerald-50 border border-emerald-100 p-3">
-                <p className="text-xs text-emerald-700">
-                  <span className="font-semibold">Summary:</span> Total Revenue{" "}
-                  {formatLkr(financialSummary.totalRevenue)} •{" "}
-                  {financialSummary.totalTransactions} transactions
-                </p>
-              </div>
-            </div>
 
-            <div className="border-t border-gray-200 px-6 py-4 flex items-center gap-3 justify-end">
-              <button
-                onClick={() => setShowCloseModal(false)}
-                className="px-4 py-2 rounded-lg border border-gray-200 text-gray-700 font-medium transition-all duration-300 cursor-pointer hover:bg-gray-50"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleCloseDay}
-                disabled={!canCloseDay || isPageLocked}
-                className={`px-4 py-2 rounded-lg text-white font-medium transition-all duration-300 cursor-pointer ${
-                  !canCloseDay || isPageLocked
-                    ? "bg-gray-400 cursor-not-allowed"
-                    : "bg-emerald-600 hover:bg-emerald-700 hover:-translate-y-0.5 hover:shadow-lg"
-                }`}
-              >
-                Close Day
-              </button>
+              <div className="border-t border-gray-200 px-6 py-4 flex items-center gap-3 justify-end">
+                <button
+                  onClick={() => setShowCloseModal(false)}
+                  className="px-4 py-2 rounded-lg border border-gray-200 text-gray-700 font-medium transition-all duration-300 cursor-pointer hover:bg-gray-50"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleCloseDay}
+                  disabled={!canCloseDay || isPageLocked}
+                  className={`px-4 py-2 rounded-lg text-white font-medium transition-all duration-300 cursor-pointer ${
+                    !canCloseDay || isPageLocked
+                      ? "bg-gray-400 cursor-not-allowed"
+                      : "bg-emerald-600 hover:bg-emerald-700 hover:-translate-y-0.5 hover:shadow-lg"
+                  }`}
+                >
+                  Close Day
+                </button>
+              </div>
             </div>
-          </div>
-        </div>,
-        document.body
-      )
-      )}
+          </div>,
+          document.body,
+        )}
     </div>
   );
 }
