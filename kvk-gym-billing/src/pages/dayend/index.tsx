@@ -10,6 +10,7 @@ import {
 } from "lucide-react";
 import { getFinancialSummary } from "@/services/financial-api";
 import { getDayEndData } from "@/services/day-end-api";
+import { createPortal } from "react-dom";
 
 export default function Dayend() {
   const today = new Date();
@@ -40,37 +41,45 @@ export default function Dayend() {
   const [isPageLocked, setIsPageLocked] = useState(false);
 
   const loadSummary = async (date: string) => {
-      try {
-        const response = await getFinancialSummary(date, date);
-        const summary =
-          response?.additionalData?.response ??
-          response?.response ??
-          response ??
-          {};
+    try {
+      const response = await getFinancialSummary(date, date);
+      const summary =
+        response?.additionalData?.response ??
+        response?.response ??
+        response ??
+        {};
 
-        setFinancialSummary({
-          totalRevenue: Number(summary.totalRevenue ?? 0),
-          cashRevenue: Number(summary.cashRevenue ?? 0),
-          creditCardRevenue: Number(summary.creditCardRevenue ?? 0),
-          payPalRevenue: Number(summary.payPalRevenue ?? 0),
-        });
-      } catch {
-        setFinancialSummary({
-          totalRevenue: 0,
-          cashRevenue: 0,
-          creditCardRevenue: 0,
-          payPalRevenue: 0,
-        });
-      }
-    };
+      setFinancialSummary({
+        totalRevenue: Number(summary.totalRevenue ?? 0),
+        cashRevenue: Number(summary.cashRevenue ?? 0),
+        creditCardRevenue: Number(summary.creditCardRevenue ?? 0),
+        payPalRevenue: Number(summary.payPalRevenue ?? 0),
+      });
+    } catch {
+      setFinancialSummary({
+        totalRevenue: 0,
+        cashRevenue: 0,
+        creditCardRevenue: 0,
+        payPalRevenue: 0,
+      });
+    }
+  };
 
-  const actualCash = actualCashCount
+    const actualCash = actualCashCount
     ? parseFloat(actualCashCount.replace(/[^\d.-]/g, ""))
     : 0;
-  const discrepancy = (financialSummary.cashRevenue + prevDayAmount) - actualCash;
+    
+  const holdAmount = Number(holdNextDayAmount || 0);
+
+  const isHoldAmountValid = holdAmount <= actualCash;
+
+
+
+  const discrepancy = financialSummary.cashRevenue + prevDayAmount - actualCash;
   const isDiscrepancyZero = discrepancy === 0;
   const canCloseDay =
     actualCashCount.trim() !== "" &&
+    isHoldAmountValid &&
     (isDiscrepancyZero || cashRemark.trim() !== "");
 
   const handleCloseDay = () => {
@@ -300,18 +309,27 @@ export default function Dayend() {
                     Hold for Next Day
                   </label>
                   <input
-                    type="text"
+                    type="number"
+                    min="0"
+                    step="0.01"
                     value={holdNextDayAmount}
                     onChange={(e) => setHoldNextDayAmount(e.target.value)}
-                    placeholder="LKR 0.00"
+                    placeholder="0.00"
                     className="w-24 px-3 py-2 text-right text-sm border border-gray-100 rounded-lg outline-none focus:ring-2 focus:ring-blue-200 focus:border-blue-500 bg-white"
                   />
                 </div>
+                  {holdNextDayAmount &&
+                    Number(holdNextDayAmount) >
+                      Number(actualCashCount || 0) && (
+                      <p className="text-xs text-red-500 mt-1">
+                        Hold amount cannot exceed actual cash count.
+                      </p>
+                    )}
                 <button
                   onClick={() => setShowCloseModal(true)}
-                  disabled={!actualCashCount.trim()}
-                  className={`w-full flex items-center justify-center gap-2 px-4 py-3 text-white rounded-lg font-medium transition-all duration-300 ${
-                    !actualCashCount.trim()
+                  disabled={!actualCashCount.trim() || !isHoldAmountValid || (!isDiscrepancyZero && !cashRemark.trim())}
+                  className={`w-full flex items-center justify-center gap-2 px-4 py-3 text-white rounded-lg font-medium transition-all duration-300 cursor-pointer ${
+                    !actualCashCount.trim() || !isHoldAmountValid
                       ? "bg-gray-400 cursor-not-allowed"
                       : "bg-emerald-600 hover:bg-emerald-700 hover:-translate-y-0.5 hover:shadow-lg"
                   }`}
@@ -319,7 +337,7 @@ export default function Dayend() {
                   <Lock size={16} />
                   Close Day
                 </button>
-                <button className="w-full flex items-center justify-center gap-2 px-4 py-3 border border-gray-200 text-gray-700 rounded-lg font-medium transition-all duration-300 hover:bg-gray-50 hover:-translate-y-0.5 hover:shadow-sm">
+                <button className="w-full flex items-center justify-center gap-2 px-4 py-3 border cursor-pointer border-gray-200 text-gray-700 rounded-lg font-medium transition-all duration-300 hover:bg-gray-50 hover:-translate-y-0.5 hover:shadow-sm">
                   <Download size={16} />
                   Print Report
                 </button>
@@ -330,7 +348,8 @@ export default function Dayend() {
       )}
 
       {showCloseModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4 py-6">
+        createPortal(
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/50 px-4 py-6">
           <div className="w-full max-w-md rounded-2xl bg-white shadow-2xl overflow-hidden">
             <div className="flex items-center justify-between border-b border-gray-200 px-6 py-4">
               <h2 className="text-lg font-semibold text-gray-900">
@@ -351,7 +370,7 @@ export default function Dayend() {
                 </label>
                 <input
                   type="date"
-                  value={defaultDate}
+                  value={dayEndData?.currentDate?.split("T")[0] || defaultDate}
                   disabled
                   className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg bg-gray-50"
                 />
@@ -380,14 +399,14 @@ export default function Dayend() {
             <div className="border-t border-gray-200 px-6 py-4 flex items-center gap-3 justify-end">
               <button
                 onClick={() => setShowCloseModal(false)}
-                className="px-4 py-2 rounded-lg border border-gray-200 text-gray-700 font-medium transition-all duration-300 hover:bg-gray-50"
+                className="px-4 py-2 rounded-lg border border-gray-200 text-gray-700 font-medium transition-all duration-300 cursor-pointer hover:bg-gray-50"
               >
                 Cancel
               </button>
               <button
                 onClick={handleCloseDay}
                 disabled={!canCloseDay || isPageLocked}
-                className={`px-4 py-2 rounded-lg text-white font-medium transition-all duration-300 ${
+                className={`px-4 py-2 rounded-lg text-white font-medium transition-all duration-300 cursor-pointer ${
                   !canCloseDay || isPageLocked
                     ? "bg-gray-400 cursor-not-allowed"
                     : "bg-emerald-600 hover:bg-emerald-700 hover:-translate-y-0.5 hover:shadow-lg"
@@ -397,7 +416,9 @@ export default function Dayend() {
               </button>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
+      )
       )}
     </div>
   );
