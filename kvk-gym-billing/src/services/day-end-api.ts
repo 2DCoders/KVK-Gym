@@ -26,3 +26,16 @@ export const getDayEndData = async (date?: string) => {
     throw error;
   }
 };
+
+export const performDayEnd = async (dayEndData: any) => {
+  try {
+    const response = await axios.post(DAYEND_API_URL, dayEndData, {
+      headers: {
+        Authorization: `Bearer ${getToken()}`,
+      },
+    });
+    return response.data;
+  } catch (error) {
+    throw error;
+  }
+};

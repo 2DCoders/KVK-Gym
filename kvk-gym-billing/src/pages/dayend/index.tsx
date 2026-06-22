@@ -9,26 +9,26 @@ import {
   X,
 } from "lucide-react";
 import { getFinancialSummary } from "@/services/financial-api";
-import { getDayEndData } from "@/services/day-end-api";
+import { getDayEndData, performDayEnd } from "@/services/day-end-api";
 import { createPortal } from "react-dom";
+import { Alert } from "@/components/ui/alert";
+import { useNavigate } from "react-router-dom";
 
 export default function Dayend() {
   const today = new Date();
   const defaultDate = today.toISOString().split("T")[0];
-
-  const dayendData = {
-    totalRevenue: 89890,
-    totalCash: 34900,
-    totalCard: 54990,
-    totalTransactions: 24,
-    cashDiscrepancy: 0,
-  };
 
   const [showCloseModal, setShowCloseModal] = useState(false);
   const [closingNotes, setClosingNotes] = useState("");
   const [prevDayAmount, setPrevDayAmount] = useState(0);
   const [holdNextDayAmount, setHoldNextDayAmount] = useState("");
   const [actualCashCount, setActualCashCount] = useState("");
+  const [pageAlert, setPageAlert] = useState<{
+    visible: boolean;
+    variant?: "success" | "error" | "warning" | "info";
+    title?: string;
+    description?: string;
+  }>({ visible: false });
   const [cashRemark, setCashRemark] = useState("");
   const [financialSummary, setFinancialSummary] = useState({
     totalRevenue: 0,
@@ -40,6 +40,10 @@ export default function Dayend() {
 
   const [dayEndData, setDayEndData] = useState<any>(null);
   const [isPageLocked, setIsPageLocked] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
+
+  const navigate = useNavigate();
 
   const loadSummary = async (date: string) => {
     try {
@@ -83,15 +87,6 @@ export default function Dayend() {
     isHoldAmountValid &&
     (isDiscrepancyZero || cashRemark.trim() !== "");
 
-  const handleCloseDay = () => {
-    if (!canCloseDay) return;
-    setShowCloseModal(false);
-    setClosingNotes("");
-    setActualCashCount("");
-    setCashRemark("");
-    setPrevDayAmount(0);
-  };
-
   const handleGetDayendData = async () => {
     try {
       const res = await getDayEndData();
@@ -110,7 +105,7 @@ export default function Dayend() {
 
         setIsPageLocked(currentDate > today);
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error("Failed to fetch day end data:", error);
     }
   };
@@ -122,8 +117,108 @@ export default function Dayend() {
   const formatLkr = (amount: number) =>
     `LKR ${amount.toLocaleString("en-LK", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
+  const handlePerformDayEnd = async () => {
+    setLoading(true);
+    try {
+      const body = {
+        currentDate: dayEndData.currentDate,
+        cashFromPrevDay: prevDayAmount,
+        expectedCashTotal: financialSummary.cashRevenue + prevDayAmount,
+        actualCashCount: actualCash,
+        discrepancy,
+        remark: cashRemark,
+        holdForNextDay: holdAmount,
+      };
+      await performDayEnd(body);
+      setShowSuccessModal(true);
+      handleGetDayendData();
+    } catch (error: any) {
+      setPageAlert({
+        visible: true,
+        variant: "error",
+        title: "Day End Failed",
+        description:
+          error.response?.data?.message ||
+          "An error occurred while performing day end. Please try again.",
+      });
+    } finally {
+      setLoading(false);
+      setShowCloseModal(false);
+    }
+  };
+
+  const handleContinueToLogin = () => {
+    localStorage.removeItem("cashier");
+    localStorage.removeItem("dayEndData");
+    window.location.href = "/";
+  };
+
   return (
     <div className="max-w-7xl mx-auto px-4 py-6">
+      {pageAlert.visible && (
+        <div>
+          <Alert
+            variant={pageAlert.variant as any}
+            title={pageAlert.title}
+            description={pageAlert.description}
+            onClose={() => setPageAlert((s) => ({ ...s, visible: false }))}
+          />
+        </div>
+      )}
+      {loading && (
+        createPortal(
+        <div className="fixed inset-0 z-[9999999999] flex items-center justify-center bg-black/60 backdrop-blur-md">
+          <div className="flex flex-col items-center gap-3">
+            <div className="h-14 w-14 animate-spin rounded-full border-4 border-white/30 border-t-white"></div>
+            <p className="text-sm text-white font-medium">Loading</p>
+          </div>
+        </div>,
+        document.body)
+      )}
+      {showSuccessModal &&
+        createPortal(
+          <div className="fixed inset-0 z-[10000] flex items-center justify-center bg-black/60 backdrop-blur-sm px-4">
+            <div className="w-full max-w-md rounded-3xl bg-white p-8 shadow-2xl text-center">
+              <div className="mx-auto mb-5 flex h-20 w-20 items-center justify-center rounded-full bg-emerald-100">
+                <svg
+                  className="h-10 w-10 text-emerald-600"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="3"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    d="M5 13l4 4L19 7"
+                  />
+                </svg>
+              </div>
+
+              <h2 className="text-2xl font-bold text-gray-900">
+                Day End Completed
+              </h2>
+
+              <p className="mt-3 text-gray-600">
+                The business day has been successfully closed.
+              </p>
+
+              <p className="mt-2 text-sm text-gray-500">
+                Please sign in again to begin operations for the next business
+                day.
+              </p>
+
+              <button
+                onClick={handleContinueToLogin}
+                className="mt-6 w-full rounded-xl bg-emerald-600 px-4 py-3 text-white font-medium transition hover:bg-emerald-700 cursor-pointer"
+              >
+                Tap to Continue
+              </button>
+            </div>
+          </div>,
+          document.body,
+        )}
+
       {isPageLocked && (
         <div className="mb-4 rounded-xl border border-red-200 bg-red-50 p-4">
           <div className="flex items-center gap-2">
@@ -410,7 +505,7 @@ export default function Dayend() {
                   Cancel
                 </button>
                 <button
-                  onClick={handleCloseDay}
+                  onClick={handlePerformDayEnd}
                   disabled={!canCloseDay || isPageLocked}
                   className={`px-4 py-2 rounded-lg text-white font-medium transition-all duration-300 cursor-pointer ${
                     !canCloseDay || isPageLocked
