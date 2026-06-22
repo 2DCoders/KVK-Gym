@@ -1,4 +1,4 @@
-import { useLocation, useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from "react-router-dom";
 import {
   Users,
   Dumbbell,
@@ -7,7 +7,9 @@ import {
   Settings,
   ChevronDown,
   Ticket,
-} from 'lucide-react';
+} from "lucide-react";
+import { getDayEndData } from "@/services/day-end-api";
+import { useEffect, useState } from "react";
 
 interface SidebarProps {
   isOpen: boolean;
@@ -33,50 +35,82 @@ export default function Sidebar({ isOpen, isMobile, onClose }: SidebarProps) {
   const location = useLocation();
   const navigate = useNavigate();
   const collapsed = !isOpen && !isMobile;
-  
-  const cashier = localStorage.getItem('cashier') ? JSON.parse(localStorage.getItem('cashier') as string) : null;
+
+  const [isDidDayEnd, setIsDidDayEnd] = useState(false);
+
+  const cashier = localStorage.getItem("cashier")
+    ? JSON.parse(localStorage.getItem("cashier") as string)
+    : null;
+
+  const handleGetDayEndData = async () => {
+    const today = new Date().toISOString().split("T")[0];
+
+    try {
+      const res = await getDayEndData(today);
+      if (res && res.length > 0) {
+        setIsDidDayEnd(true);
+        localStorage.setItem("dayEndData", JSON.stringify(res[0]));
+      } else {
+        setIsDidDayEnd(false);
+        localStorage.removeItem("dayEndData");
+      }
+    } catch (error) {
+      setIsDidDayEnd(false);
+      localStorage.removeItem("dayEndData");
+    }
+  };
+
+  useEffect(() => {
+    handleGetDayEndData();
+  }, []);
+
+  const canAccessMenu = (itemId: string) => {
+    if (isDidDayEnd) return true;
+    
+    return itemId === "dayend";
+  };
 
   const navItems: NavItem[] = [
     {
-      id: 'members',
-      label: 'Members',
+      id: "members",
+      label: "Members",
       icon: Users,
-      path: '/members',
+      path: "/members",
       submenu: null,
     },
     {
-      id: 'trainers',
-      label: 'Trainers',
+      id: "trainers",
+      label: "Trainers",
       icon: Dumbbell,
-      path: '/trainers',
+      path: "/trainers",
       submenu: null,
     },
     {
-      id: 'daypass',
-      label: 'Day Pass',
+      id: "daypass",
+      label: "Day Pass",
       icon: Ticket,
-      path: '/daypass',
+      path: "/daypass",
       submenu: null,
     },
     {
-      id: 'payments',
-      label: 'Payments',
+      id: "payments",
+      label: "Payments",
       icon: CreditCard,
-      path: '/payments',
+      path: "/payments",
       submenu: null,
     },
     {
-      id: 'dayend',
-      label: 'Day end',
+      id: "dayend",
+      label: "Day end",
       icon: CheckSquare,
-      path: '/dayend',
+      path: "/dayend",
       submenu: null,
     },
     {
-      id: 'settings',
-      label: 'Settings',
+      id: "settings",
+      label: "Settings",
       icon: Settings,
-      path: '/settings',
+      path: "/settings",
       submenu: null,
     },
   ];
@@ -98,10 +132,9 @@ export default function Sidebar({ isOpen, isMobile, onClose }: SidebarProps) {
   return (
     <>
       <aside
-        className={`${isMobile ? 'fixed inset-y-0 left-0 z-40' : 'relative'} h-full w-full bg-white border-r border-gray-200 shadow-[0_0_0_1px_rgba(15,23,42,0.03)] transition-all duration-300 ease-in-out ${isMobile ? (isOpen ? 'translate-x-0' : '-translate-x-full') : ''} overflow-y-auto scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-transparent`}
+        className={`${isMobile ? "fixed inset-y-0 left-0 z-40" : "relative"} h-full w-full bg-white border-r border-gray-200 shadow-[0_0_0_1px_rgba(15,23,42,0.03)] transition-all duration-300 ease-in-out ${isMobile ? (isOpen ? "translate-x-0" : "-translate-x-full") : ""} overflow-y-auto scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-transparent`}
       >
         <div className="flex flex-col h-full">
-
           {/* Brand Header */}
           <div className="px-4 pt-4 pb-3 border-b border-gray-100">
             <div className="flex items-center gap-3">
@@ -110,7 +143,9 @@ export default function Sidebar({ isOpen, isMobile, onClose }: SidebarProps) {
               </div>
               {!collapsed && (
                 <div className="min-w-0">
-                  <p className="text-sm font-semibold text-gray-900 truncate">KVK Gym System</p>
+                  <p className="text-sm font-semibold text-gray-900 truncate">
+                    KVK Gym System
+                  </p>
                   <p className="text-xs text-gray-500">Cashier Panel</p>
                 </div>
               )}
@@ -123,22 +158,47 @@ export default function Sidebar({ isOpen, isMobile, onClose }: SidebarProps) {
               const Icon = item.icon;
               const active = isActive(item.path);
 
-              const btnBase = `w-full flex items-center ${collapsed ? 'justify-center' : 'justify-between'} ${collapsed ? 'px-2' : 'px-3'} py-1.5 rounded-xl transition-colors duration-150`;
-              const iconWrapper = `${active ? 'bg-blue-50 text-blue-600' : 'text-gray-400'} w-8 h-8 flex items-center justify-center rounded-lg transition`;
+              const btnBase = `w-full flex items-center ${collapsed ? "justify-center" : "justify-between"} ${collapsed ? "px-2" : "px-3"} py-1.5 rounded-xl transition-colors duration-150`;
+              const iconWrapper = `${active ? "bg-blue-50 text-blue-600" : "text-gray-400"} w-8 h-8 flex items-center justify-center rounded-lg transition`;
 
               return (
                 <div key={item.id}>
                   <button
-                    onClick={() => handleNavigation(item.path)}
-                    className={`${btnBase} cursor-pointer ${active && !collapsed ? 'bg-blue-50 text-blue-700 shadow-sm' : 'text-gray-700 hover:bg-gray-50'}`}
+                    onClick={() => {
+                      if (!canAccessMenu(item.id)) return;
+                      handleNavigation(item.path);
+                    }}
+                    disabled={!canAccessMenu(item.id)}
+                    className={`${btnBase}
+                      ${
+                        active && !collapsed
+                          ? "bg-blue-50 text-blue-700 shadow-sm"
+                          : "text-gray-700 hover:bg-gray-50"
+                      }
+                      ${
+                        !canAccessMenu(item.id)
+                          ? "opacity-50 cursor-not-allowed"
+                          : "cursor-pointer"
+                      }
+                    `}
                   >
-                    <div className={`flex items-center gap-3 ${collapsed ? 'justify-center' : ''}`}>
+                    <div
+                      className={`flex items-center gap-3 ${collapsed ? "justify-center" : ""}`}
+                    >
                       <span className={iconWrapper}>
                         <Icon size={16} />
                       </span>
-                      {!collapsed && <span className={`text-sm ${active ? 'text-blue-700 font-semibold' : 'text-gray-700'}`}>{item.label}</span>}
+                      {!collapsed && (
+                        <span
+                          className={`text-sm ${active ? "text-blue-700 font-semibold" : "text-gray-700"}`}
+                        >
+                          {item.label}
+                        </span>
+                      )}
                     </div>
-                    {!collapsed && item.submenu && <ChevronDown size={16} className="text-gray-400" />}
+                    {!collapsed && item.submenu && (
+                      <ChevronDown size={16} className="text-gray-400" />
+                    )}
                   </button>
 
                   {/* Submenu */}
@@ -148,10 +208,11 @@ export default function Sidebar({ isOpen, isMobile, onClose }: SidebarProps) {
                         <button
                           key={subitem.id}
                           onClick={() => handleNavigation(subitem.path)}
-                          className={`w-full text-left px-4 py-2 text-sm rounded-lg transition-all duration-200 ${isActive(subitem.path)
-                            ? 'bg-blue-50 text-blue-700 font-medium'
-                            : 'text-gray-600 hover:bg-gray-50'
-                            }`}
+                          className={`w-full text-left px-4 py-2 text-sm rounded-lg transition-all duration-200 ${
+                            isActive(subitem.path)
+                              ? "bg-blue-50 text-blue-700 font-medium"
+                              : "text-gray-600 hover:bg-gray-50"
+                          }`}
                         >
                           {subitem.label}
                         </button>
@@ -166,17 +227,22 @@ export default function Sidebar({ isOpen, isMobile, onClose }: SidebarProps) {
           {/* Footer */}
           <div className="mt-auto px-4 pb-4 pt-3 border-t border-gray-100 space-y-3">
             <div className="flex items-center gap-2 text-xs text-emerald-600">
-              {!collapsed && <span className="h-2 w-2 rounded-full bg-emerald-500"></span>}
+              {!collapsed && (
+                <span className="h-2 w-2 rounded-full bg-emerald-500"></span>
+              )}
               {!collapsed && <span>System online</span>}
             </div>
 
             {!collapsed && (
               <div className="flex items-center gap-3 rounded-2xl border border-gray-200 bg-gray-50 px-3 py-3 shadow-sm">
                 <div className="w-8 h-8 rounded-full bg-blue-100 text-blue-700 flex items-center justify-center text-xs font-semibold">
-                  {cashier?.firstName?.charAt(0)}{cashier?.lastName?.charAt(0)}
+                  {cashier?.firstName?.charAt(0)}
+                  {cashier?.lastName?.charAt(0)}
                 </div>
                 <div className="min-w-0 flex-1">
-                  <p className="text-sm font-semibold text-gray-900 truncate">{cashier?.firstName} {cashier?.lastName}</p>
+                  <p className="text-sm font-semibold text-gray-900 truncate">
+                    {cashier?.firstName} {cashier?.lastName}
+                  </p>
                   <p className="text-xs text-gray-500">{cashier?.email}</p>
                 </div>
               </div>
@@ -184,8 +250,9 @@ export default function Sidebar({ isOpen, isMobile, onClose }: SidebarProps) {
 
             {collapsed && (
               <div className="w-8 h-8 rounded-full bg-blue-100 text-blue-700 flex items-center justify-center text-xs font-semibold">
-                  {cashier?.firstName?.charAt(0)}{cashier?.lastName?.charAt(0)}
-                </div>
+                {cashier?.firstName?.charAt(0)}
+                {cashier?.lastName?.charAt(0)}
+              </div>
             )}
           </div>
         </div>

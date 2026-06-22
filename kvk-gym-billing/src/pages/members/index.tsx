@@ -6,6 +6,7 @@ import { fingerPrintSave } from '@/services/fingerprint-api';
 import { processPayment } from '@/services/payment-api';
 import { getMembershipPlans } from '@/services/membership-plans-api';
 import Alert from '@/components/ui/alert';
+import { useNavigate } from 'react-router-dom';
 
 type MemberStatus = 'approved' | 'pending' | 'blocked';
 
@@ -254,6 +255,7 @@ export default function Members() {
   const [openAction, setOpenAction] = useState<{ id: string; top: number; left: number } | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
 
+  const navigate = useNavigate();
   // Helper functions
   const calculateAge = (dateOfBirth: string): string => {
     try {
@@ -328,6 +330,15 @@ export default function Members() {
     const year = date.getFullYear();
     return `${year}-${month}-${day}`;
   };
+
+  
+  const dayendData = localStorage.getItem("dayEndData") ? JSON.parse(localStorage.getItem("dayEndData") as string) : null;
+
+  useEffect(() => {
+    if (!dayendData) {
+      navigate("/dayend");
+    }
+  }, [dayendData]);
 
   // Fetch members on component mount
   useEffect(() => {

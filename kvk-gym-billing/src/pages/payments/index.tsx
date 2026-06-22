@@ -1,7 +1,15 @@
-import { useEffect, useState } from 'react';
-import { Banknote, CreditCard, Download, ReceiptText, Search, TrendingUp } from 'lucide-react';
-import { getFinancialSummary } from '@/services/financial-api';
-import { getPayments } from '@/services/payments-api';
+import { useEffect, useState } from "react";
+import {
+  Banknote,
+  CreditCard,
+  Download,
+  ReceiptText,
+  Search,
+  TrendingUp,
+} from "lucide-react";
+import { getFinancialSummary } from "@/services/financial-api";
+import { getPayments } from "@/services/payments-api";
+import { useNavigate } from "react-router-dom";
 
 type PaymentRecord = {
   id: string | number;
@@ -13,21 +21,33 @@ type PaymentRecord = {
 
 export default function Payments() {
   const today = new Date();
-  const defaultDate = today.toISOString().split('T')[0];
+  const defaultDate = today.toISOString().split("T")[0];
 
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
   const [selectedDate, setSelectedDate] = useState(defaultDate);
-  const [searchTerm, setSearchTerm] = useState('');
+  const [searchTerm, setSearchTerm] = useState("");
   const [payments, setPayments] = useState<PaymentRecord[]>([]);
   const [isLoadingPayments, setIsLoadingPayments] = useState(false);
-  const [paymentsError, setPaymentsError] = useState('');
+  const [paymentsError, setPaymentsError] = useState("");
   const [financialSummary, setFinancialSummary] = useState({
     totalRevenue: 0,
     cashRevenue: 0,
     creditCardRevenue: 0,
     payPalRevenue: 0,
   });
+
+  const navigate = useNavigate();
+
+  const dayendData = localStorage.getItem("dayEndData")
+    ? JSON.parse(localStorage.getItem("dayEndData") as string)
+    : null;
+
+  useEffect(() => {
+    if (!dayendData) {
+      navigate("/dayend");
+    }
+  }, [dayendData]);
 
   useEffect(() => {
     const startDate = `${defaultDate}`;
@@ -36,7 +56,11 @@ export default function Payments() {
     const loadSummary = async () => {
       try {
         const response = await getFinancialSummary(startDate, endDate);
-        const summary = response?.additionalData?.response ?? response?.response ?? response ?? {};
+        const summary =
+          response?.additionalData?.response ??
+          response?.response ??
+          response ??
+          {};
 
         setFinancialSummary({
           totalRevenue: Number(summary.totalRevenue ?? 0),
@@ -63,7 +87,7 @@ export default function Payments() {
 
   const loadPayments = async () => {
     setIsLoadingPayments(true);
-    setPaymentsError('');
+    setPaymentsError("");
 
     const from = selectedDate;
     const to = selectedDate; // or next day if needed
@@ -79,18 +103,19 @@ export default function Payments() {
 
       const mappedPayments = Array.isArray(rows)
         ? rows.map((payment: any, index: number) => ({
-          id: payment.id ?? index + 1,
-          member: `${payment.firstName ?? ''} ${payment.lastName ?? ''}`.trim(),
-          amount: Number(payment.amount ?? 0),
-          date: payment.date ?? selectedDate,
-          method: payment.method ?? 'Cash',
-        }))
+            id: payment.id ?? index + 1,
+            member:
+              `${payment.firstName ?? ""} ${payment.lastName ?? ""}`.trim(),
+            amount: Number(payment.amount ?? 0),
+            date: payment.date ?? selectedDate,
+            method: payment.method ?? "Cash",
+          }))
         : [];
 
       setPayments(mappedPayments);
     } catch {
       setPayments([]);
-      setPaymentsError('Failed to load payments for the selected date.');
+      setPaymentsError("Failed to load payments for the selected date.");
     } finally {
       setIsLoadingPayments(false);
     }
@@ -104,8 +129,13 @@ export default function Payments() {
   const filteredPayments = payments.filter((payment) => {
     if (!normalizedSearchTerm) return true;
 
-    return [payment.member, payment.amount.toLocaleString(), payment.method, payment.date]
-      .join(' ')
+    return [
+      payment.member,
+      payment.amount.toLocaleString(),
+      payment.method,
+      payment.date,
+    ]
+      .join(" ")
       .toLowerCase()
       .includes(normalizedSearchTerm);
   });
@@ -114,7 +144,8 @@ export default function Payments() {
   const totalPages = Math.max(1, Math.ceil(total / pageSize));
   const start = (page - 1) * pageSize;
   const pageItems = filteredPayments.slice(start, start + pageSize);
-  const formatLkr = (amount: number) => `LKR ${amount.toLocaleString('en-LK', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+  const formatLkr = (amount: number) =>
+    `LKR ${amount.toLocaleString("en-LK", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
   return (
     <div className="max-w-7xl mx-auto px-4 py-6">
@@ -122,12 +153,16 @@ export default function Payments() {
         <div className="flex items-start justify-between gap-4">
           <div>
             <div className="flex items-center gap-3">
-              <h1 className="text-xl md:text-2xl font-semibold text-gray-900">Payments</h1>
+              <h1 className="text-xl md:text-2xl font-semibold text-gray-900">
+                Payments
+              </h1>
               <span className="inline-flex items-center rounded-full bg-blue-50 px-3 py-1 text-xs font-semibold text-blue-700 ring-1 ring-inset ring-blue-100">
                 Today
               </span>
             </div>
-            <p className="text-sm text-gray-500 mt-1">Search, review and manage payment records</p>
+            <p className="text-sm text-gray-500 mt-1">
+              Search, review and manage payment records
+            </p>
           </div>
 
           <div className="w-full max-w-md">
@@ -154,8 +189,12 @@ export default function Payments() {
           <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-lg hover:border-gray-300">
             <div className="flex items-center justify-between gap-3">
               <div>
-                <p className="text-sm font-medium text-gray-500">Total revenue</p>
-                <p className="mt-2 text-2xl font-semibold tracking-tight text-gray-900">{formatLkr(financialSummary.totalRevenue)}</p>
+                <p className="text-sm font-medium text-gray-500">
+                  Total revenue
+                </p>
+                <p className="mt-2 text-2xl font-semibold tracking-tight text-gray-900">
+                  {formatLkr(financialSummary.totalRevenue)}
+                </p>
               </div>
               <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-emerald-50 text-emerald-600">
                 <TrendingUp size={20} />
@@ -167,8 +206,12 @@ export default function Payments() {
           <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-lg hover:border-gray-300">
             <div className="flex items-center justify-between gap-3">
               <div>
-                <p className="text-sm font-medium text-gray-500">Online total</p>
-                <p className="mt-2 text-2xl font-semibold tracking-tight text-gray-900">{formatLkr(financialSummary.payPalRevenue)}</p>
+                <p className="text-sm font-medium text-gray-500">
+                  Online total
+                </p>
+                <p className="mt-2 text-2xl font-semibold tracking-tight text-gray-900">
+                  {formatLkr(financialSummary.payPalRevenue)}
+                </p>
               </div>
               <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-blue-50 text-blue-600">
                 <ReceiptText size={20} />
@@ -181,7 +224,9 @@ export default function Payments() {
             <div className="flex items-center justify-between gap-3">
               <div>
                 <p className="text-sm font-medium text-gray-500">Cash total</p>
-                <p className="mt-2 text-2xl font-semibold tracking-tight text-gray-900">{formatLkr(financialSummary.cashRevenue)}</p>
+                <p className="mt-2 text-2xl font-semibold tracking-tight text-gray-900">
+                  {formatLkr(financialSummary.cashRevenue)}
+                </p>
               </div>
               <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-amber-50 text-amber-600">
                 <Banknote size={20} />
@@ -194,7 +239,9 @@ export default function Payments() {
             <div className="flex items-center justify-between gap-3">
               <div>
                 <p className="text-sm font-medium text-gray-500">Card total</p>
-                <p className="mt-2 text-2xl font-semibold tracking-tight text-gray-900">{formatLkr(financialSummary.creditCardRevenue)}</p>
+                <p className="mt-2 text-2xl font-semibold tracking-tight text-gray-900">
+                  {formatLkr(financialSummary.creditCardRevenue)}
+                </p>
               </div>
               <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-violet-50 text-violet-600">
                 <CreditCard size={20} />
@@ -207,7 +254,8 @@ export default function Payments() {
         <div className="bg-white rounded-lg border border-gray-200 shadow-sm overflow-hidden transition-all duration-300 hover:shadow-md hover:border-gray-300">
           <div className="px-4 py-2 border-b border-gray-100 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
             <div className="text-sm text-gray-600">
-              Showing payments for <span className="font-medium text-gray-900">{selectedDate}</span>
+              Showing payments for{" "}
+              <span className="font-medium text-gray-900">{selectedDate}</span>
             </div>
 
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
@@ -240,35 +288,58 @@ export default function Payments() {
                 <tbody>
                   {isLoadingPayments ? (
                     <tr>
-                      <td colSpan={4} className="py-8 text-center text-sm text-gray-500">Loading payments...</td>
+                      <td
+                        colSpan={4}
+                        className="py-8 text-center text-sm text-gray-500"
+                      >
+                        Loading payments...
+                      </td>
                     </tr>
                   ) : paymentsError ? (
                     <tr>
-                      <td colSpan={4} className="py-8 text-center text-sm text-red-600">{paymentsError}</td>
-                    </tr>
-                  ) : pageItems.map((payment) => (
-                    <tr key={payment.id} className="border-b border-gray-100 transition-colors duration-300 hover:bg-gray-50/80">
-                      <td className="py-2 px-3 align-top">
-                        <div className="flex items-center gap-3">
-                          <div className="w-8 h-8 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center text-sm font-semibold">
-                            {payment.member
-                              .split(' ')
-                              .map((name) => name[0])
-                              .slice(0, 2)
-                              .join('')}
-                          </div>
-                          <div>
-                            <div className="text-sm font-medium text-gray-900">{payment.member}</div>
-                          </div>
-                        </div>
-                      </td>
-                      <td className="py-2 px-3 align-top font-medium text-gray-900">{formatLkr(payment.amount)}</td>
-                      <td className="py-2 px-3 align-top text-gray-700">{payment.date}</td>
-                      <td className="py-2 px-3 align-top">
-                        <span className="px-2 py-0.5 rounded-full bg-gray-100 text-gray-700 text-xs">{payment.method}</span>
+                      <td
+                        colSpan={4}
+                        className="py-8 text-center text-sm text-red-600"
+                      >
+                        {paymentsError}
                       </td>
                     </tr>
-                  ))}
+                  ) : (
+                    pageItems.map((payment) => (
+                      <tr
+                        key={payment.id}
+                        className="border-b border-gray-100 transition-colors duration-300 hover:bg-gray-50/80"
+                      >
+                        <td className="py-2 px-3 align-top">
+                          <div className="flex items-center gap-3">
+                            <div className="w-8 h-8 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center text-sm font-semibold">
+                              {payment.member
+                                .split(" ")
+                                .map((name) => name[0])
+                                .slice(0, 2)
+                                .join("")}
+                            </div>
+                            <div>
+                              <div className="text-sm font-medium text-gray-900">
+                                {payment.member}
+                              </div>
+                            </div>
+                          </div>
+                        </td>
+                        <td className="py-2 px-3 align-top font-medium text-gray-900">
+                          {formatLkr(payment.amount)}
+                        </td>
+                        <td className="py-2 px-3 align-top text-gray-700">
+                          {payment.date}
+                        </td>
+                        <td className="py-2 px-3 align-top">
+                          <span className="px-2 py-0.5 rounded-full bg-gray-100 text-gray-700 text-xs">
+                            {payment.method}
+                          </span>
+                        </td>
+                      </tr>
+                    ))
+                  )}
                 </tbody>
               </table>
             </div>
@@ -276,7 +347,8 @@ export default function Payments() {
 
           <div className="px-4 py-3 border-t border-gray-100 bg-white flex items-center justify-between">
             <div className="text-sm text-gray-600">
-              Showing {total === 0 ? 0 : start + 1} to {Math.min(start + pageSize, total)} of {total} entries
+              Showing {total === 0 ? 0 : start + 1} to{" "}
+              {Math.min(start + pageSize, total)} of {total} entries
             </div>
             <div className="flex items-center gap-2">
               <div className="flex items-center gap-3">
@@ -294,7 +366,11 @@ export default function Payments() {
                   <option value={25}>25</option>
                 </select>
               </div>
-              <button onClick={() => setPage(Math.max(1, page - 1))} disabled={page === 1} className="px-3 py-1 rounded-md border bg-white text-sm disabled:opacity-50 transition-all duration-300 hover:-translate-y-0.5 hover:shadow-sm hover:bg-gray-50">
+              <button
+                onClick={() => setPage(Math.max(1, page - 1))}
+                disabled={page === 1}
+                className="px-3 py-1 rounded-md border bg-white text-sm disabled:opacity-50 transition-all duration-300 hover:-translate-y-0.5 hover:shadow-sm hover:bg-gray-50"
+              >
                 Prev
               </button>
               <div className="flex items-center gap-1">
@@ -302,13 +378,17 @@ export default function Payments() {
                   <button
                     key={index}
                     onClick={() => setPage(index + 1)}
-                    className={`px-2 py-1 text-sm rounded-md transition-all duration-300 hover:-translate-y-0.5 hover:shadow-sm ${page === index + 1 ? 'bg-gray-900 text-white' : 'bg-white border hover:bg-gray-50'}`}
+                    className={`px-2 py-1 text-sm rounded-md transition-all duration-300 hover:-translate-y-0.5 hover:shadow-sm ${page === index + 1 ? "bg-gray-900 text-white" : "bg-white border hover:bg-gray-50"}`}
                   >
                     {index + 1}
                   </button>
                 ))}
               </div>
-              <button onClick={() => setPage(Math.min(totalPages, page + 1))} disabled={page === totalPages} className="px-3 py-1 rounded-md border bg-white text-sm disabled:opacity-50 transition-all duration-300 hover:-translate-y-0.5 hover:shadow-sm hover:bg-gray-50">
+              <button
+                onClick={() => setPage(Math.min(totalPages, page + 1))}
+                disabled={page === totalPages}
+                className="px-3 py-1 rounded-md border bg-white text-sm disabled:opacity-50 transition-all duration-300 hover:-translate-y-0.5 hover:shadow-sm hover:bg-gray-50"
+              >
                 Next
               </button>
             </div>

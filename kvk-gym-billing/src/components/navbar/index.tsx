@@ -118,6 +118,7 @@ export default function Navbar({
                     onClick={() => {
                       setAccountMenuOpen(false)
                       localStorage.removeItem('cashier');
+                      localStorage.removeItem('dayEndData');
                       window.location.href = '/';
                     }}
                   >
