@@ -11,14 +11,6 @@ import { getFinancialSummary } from "@/services/financial-api";
 import { getPayments } from "@/services/payments-api";
 import { useNavigate } from "react-router-dom";
 
-type PaymentRecord = {
-  id: string | number;
-  member: string;
-  amount: number;
-  date: string;
-  method: string;
-};
-
 export default function Payments() {
   const today = new Date();
   const defaultDate = today.toISOString().split("T")[0];
@@ -27,7 +19,7 @@ export default function Payments() {
   const [pageSize, setPageSize] = useState(10);
   const [selectedDate, setSelectedDate] = useState(defaultDate);
   const [searchTerm, setSearchTerm] = useState("");
-  const [payments, setPayments] = useState<PaymentRecord[]>([]);
+  const [payments, setPayments] = useState<any[]>([]);
   const [isLoadingPayments, setIsLoadingPayments] = useState(false);
   const [paymentsError, setPaymentsError] = useState("");
   const [financialSummary, setFinancialSummary] = useState({
@@ -102,14 +94,26 @@ export default function Payments() {
         [];
 
       const mappedPayments = Array.isArray(rows)
-        ? rows.map((payment: any, index: number) => ({
-            id: payment.id ?? index + 1,
-            member:
-              `${payment.firstName ?? ""} ${payment.lastName ?? ""}`.trim(),
-            amount: Number(payment.amount ?? 0),
-            date: payment.date ?? selectedDate,
-            method: payment.method ?? "Cash",
-          }))
+        ? rows.map((payment: any) => ({
+          id: payment.id,
+          member: `${payment.memberFirstName ?? ""} ${payment.memberLastName ?? ""
+            }`.trim(),
+          memberFirstName: payment.memberFirstName ?? "",
+          memberLastName: payment.memberLastName ?? "",
+          membershipNumber: payment.membershipNumber ?? "",
+          membershipPlanTitle: payment.membershipPlanTitle ?? "",
+          amount: Number(payment.amount ?? 0),
+          date: payment.createdAt ?? payment.startDate,
+          method:
+            payment.paymentType === 1
+              ? "Cash"
+              : payment.paymentType === 2
+                ? "Card"
+                : payment.paymentType === 3
+                  ? "Online"
+                  : "Unknown",
+          paymentStatus: payment.paymentStatus,
+        }))
         : [];
 
       setPayments(mappedPayments);
@@ -313,15 +317,16 @@ export default function Payments() {
                         <td className="py-2 px-3 align-top">
                           <div className="flex items-center gap-3">
                             <div className="w-8 h-8 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center text-sm font-semibold">
-                              {payment.member
-                                .split(" ")
-                                .map((name) => name[0])
-                                .slice(0, 2)
-                                .join("")}
+                              {payment.memberFirstName?.charAt(0)}
                             </div>
+
                             <div>
                               <div className="text-sm font-medium text-gray-900">
                                 {payment.member}
+                              </div>
+
+                              <div className="text-xs text-gray-500">
+                                {payment.membershipNumber}
                               </div>
                             </div>
                           </div>
@@ -330,7 +335,7 @@ export default function Payments() {
                           {formatLkr(payment.amount)}
                         </td>
                         <td className="py-2 px-3 align-top text-gray-700">
-                          {payment.date}
+                          {payment.date.slice(0,10)}
                         </td>
                         <td className="py-2 px-3 align-top">
                           <span className="px-2 py-0.5 rounded-full bg-gray-100 text-gray-700 text-xs">
