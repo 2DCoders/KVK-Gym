@@ -10,6 +10,8 @@ import {
 import { getFinancialSummary } from "@/services/financial-api";
 import { getPayments } from "@/services/payments-api";
 import { useNavigate } from "react-router-dom";
+import jsPDF from "jspdf";
+import autoTable from "jspdf-autotable";
 
 export default function Payments() {
   const today = new Date();
@@ -40,6 +42,42 @@ export default function Payments() {
       navigate("/dayend");
     }
   }, [dayendData]);
+
+  const exportPdf = () => {
+    const doc = new jsPDF();
+
+    doc.setFontSize(18);
+    doc.text("Payment Report", 14, 20);
+
+    doc.setFontSize(10);
+    doc.text(`Date: ${selectedDate}`, 14, 28);
+
+    doc.text(
+      `Total Revenue: ${formatLkr(financialSummary.totalRevenue)}`,
+      14,
+      36
+    );
+
+    autoTable(doc, {
+      startY: 45,
+      head: [["Member", "Membership No", "Amount", "Date", "Method"]],
+      body: filteredPayments.map((payment) => [
+        payment.member,
+        payment.membershipNumber,
+        formatLkr(payment.amount),
+        payment.date?.slice(0, 10),
+        payment.method,
+      ]),
+      styles: {
+        fontSize: 9,
+      },
+      headStyles: {
+        fillColor: [41, 107, 225],
+      },
+    });
+
+    doc.save(`payments-${selectedDate}.pdf`);
+  };
 
   useEffect(() => {
     const startDate = `${defaultDate}`;
@@ -182,9 +220,12 @@ export default function Payments() {
           </div>
 
           <div className="flex items-center gap-3">
-            <button className="flex items-center gap-2 px-3 py-2.5 bg-primary text-white rounded cursor-pointer bg-blue-700 transition-all duration-300 text-sm hover:-translate-y-0.5 hover:shadow-lg hover:bg-blue-800">
+            <button
+              onClick={exportPdf}
+              className="flex items-center gap-2 px-3 py-2.5 bg-primary text-white rounded cursor-pointer bg-blue-700 transition-all duration-300 text-sm hover:-translate-y-0.5 hover:shadow-lg hover:bg-blue-800"
+            >
               <Download size={14} />
-              Export
+              Export PDF
             </button>
           </div>
         </div>
@@ -335,7 +376,7 @@ export default function Payments() {
                           {formatLkr(payment.amount)}
                         </td>
                         <td className="py-2 px-3 align-top text-gray-700">
-                          {payment.date.slice(0,10)}
+                          {payment.date.slice(0, 10)}
                         </td>
                         <td className="py-2 px-3 align-top">
                           <span className="px-2 py-0.5 rounded-full bg-gray-100 text-gray-700 text-xs">

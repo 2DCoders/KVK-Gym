@@ -12,7 +12,6 @@ import { getFinancialSummary } from "@/services/financial-api";
 import { getDayEndData, performDayEnd } from "@/services/day-end-api";
 import { createPortal } from "react-dom";
 import { Alert } from "@/components/ui/alert";
-import { useNavigate } from "react-router-dom";
 
 export default function Dayend() {
   const today = new Date();
@@ -42,8 +41,6 @@ export default function Dayend() {
   const [isPageLocked, setIsPageLocked] = useState(false);
   const [loading, setLoading] = useState(false);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
-
-  const navigate = useNavigate();
 
   const loadSummary = async (date: string) => {
     try {
@@ -248,19 +245,16 @@ export default function Dayend() {
                 Review and close the business day
               </p>
 
+              
+            </div>
+
+            <div className="flex items-center gap-3">
               {dayEndData?.currentDate && (
                 <p className="text-sm font-medium text-blue-600 mt-2">
                   Working Date:{" "}
                   {new Date(dayEndData.currentDate).toLocaleDateString("en-GB")}
                 </p>
               )}
-            </div>
-
-            <div className="flex items-center gap-3">
-              <button className="flex items-center gap-2 px-3 py-2.5 bg-primary text-white rounded cursor-pointer bg-blue-700 transition-all duration-300 text-sm hover:-translate-y-0.5 hover:shadow-lg hover:bg-blue-800">
-                <Download size={14} />
-                Export
-              </button>
             </div>
           </div>
 
