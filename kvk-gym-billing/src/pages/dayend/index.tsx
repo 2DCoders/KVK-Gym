@@ -39,13 +39,9 @@ export default function Dayend() {
   const [dayEndData, setDayEndData] = useState<any>(null);
   const [isPageLocked, setIsPageLocked] = useState(false);
 
-  useEffect(() => {
-    const startDate = `${defaultDate}`;
-    const endDate = `${defaultDate}`;
-
-    const loadSummary = async () => {
+  const loadSummary = async (date: string) => {
       try {
-        const response = await getFinancialSummary(startDate, endDate);
+        const response = await getFinancialSummary(date, date);
         const summary =
           response?.additionalData?.response ??
           response?.response ??
@@ -68,13 +64,10 @@ export default function Dayend() {
       }
     };
 
-    loadSummary();
-  }, [defaultDate]);
-
   const actualCash = actualCashCount
     ? parseFloat(actualCashCount.replace(/[^\d.-]/g, ""))
     : 0;
-  const discrepancy = dayendData.totalCash + prevDayAmount - actualCash;
+  const discrepancy = (financialSummary.cashRevenue + prevDayAmount) - actualCash;
   const isDiscrepancyZero = discrepancy === 0;
   const canCloseDay =
     actualCashCount.trim() !== "" &&
@@ -96,6 +89,7 @@ export default function Dayend() {
       if (res && res.length > 0) {
         const data = res[0];
         setDayEndData(data);
+        loadSummary(data.currentDate.split("T")[0]);
         setPrevDayAmount(Number(data.cashFromPrevDay ?? 0));
 
         const currentDate = new Date(data.currentDate);
@@ -254,7 +248,7 @@ export default function Dayend() {
                     Expected Cash Total
                   </span>
                   <span className="text-sm font-semibold text-gray-900">
-                    {formatLkr(dayendData.totalCash + prevDayAmount)}
+                    {formatLkr(financialSummary.cashRevenue + prevDayAmount)}
                   </span>
                 </div>
                 <div className="flex items-center justify-between p-3 rounded-lg border border-gray-200">
@@ -262,9 +256,12 @@ export default function Dayend() {
                     Actual Cash Count *
                   </label>
                   <input
+                    type="number"
+                    min="0"
+                    step="0.01"
                     value={actualCashCount}
                     onChange={(e) => setActualCashCount(e.target.value)}
-                    placeholder="LKR 0.00"
+                    placeholder="0.00"
                     className="w-32 px-3 py-2 text-right text-sm border rounded-lg outline-none focus:ring-2 focus:ring-blue-200 focus:border-blue-500"
                   />
                 </div>
