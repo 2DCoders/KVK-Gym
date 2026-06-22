@@ -1029,6 +1029,9 @@ export default function Members() {
       });
     } finally {
       setPayLoading(false);
+      setTimeout(() => {
+        window.location.reload(); // Force reload to update payment status in member list, as it is not part of the details response and would require refetching the entire list or updating state manually
+      }, 2000);
     }
   };
 

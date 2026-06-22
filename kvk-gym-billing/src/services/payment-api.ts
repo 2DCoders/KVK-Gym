@@ -16,7 +16,7 @@ export const processPayment = async (paymentData: any, memberId: string) => {
     try {
         const response = await axios.post(`${MEMBERS_API_URL}${memberId}/payments/`, paymentData, {
             headers: {
-                                Authorization: `Bearer ${getToken()}`,
+                Authorization: `Bearer ${getToken()}`,
             },
         });
         return response.data;
