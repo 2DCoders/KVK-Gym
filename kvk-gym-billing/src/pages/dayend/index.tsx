@@ -35,6 +35,7 @@ export default function Dayend() {
     cashRevenue: 0,
     creditCardRevenue: 0,
     payPalRevenue: 0,
+    totalTransactions: 0,
   });
 
   const [dayEndData, setDayEndData] = useState<any>(null);
@@ -54,6 +55,7 @@ export default function Dayend() {
         cashRevenue: Number(summary.cashRevenue ?? 0),
         creditCardRevenue: Number(summary.creditCardRevenue ?? 0),
         payPalRevenue: Number(summary.payPalRevenue ?? 0),
+        totalTransactions: Number(summary.totalTransactions ?? 0),
       });
     } catch {
       setFinancialSummary({
@@ -61,6 +63,7 @@ export default function Dayend() {
         cashRevenue: 0,
         creditCardRevenue: 0,
         payPalRevenue: 0,
+        totalTransactions: 0,
       });
     }
   };
@@ -357,7 +360,7 @@ export default function Dayend() {
               </h2>
               <button
                 onClick={() => setShowCloseModal(false)}
-                className="rounded-full p-2 text-gray-500 transition hover:bg-gray-100 hover:text-gray-900"
+                className="rounded-full p-2 text-gray-500 transition hover:bg-gray-100 hover:text-gray-900 cursor-pointer"
               >
                 <X size={18} />
               </button>
@@ -390,8 +393,8 @@ export default function Dayend() {
               <div className="rounded-lg bg-emerald-50 border border-emerald-100 p-3">
                 <p className="text-xs text-emerald-700">
                   <span className="font-semibold">Summary:</span> Total Revenue{" "}
-                  {formatLkr(dayendData.totalRevenue)} •{" "}
-                  {dayendData.totalTransactions} transactions
+                  {formatLkr(financialSummary.totalRevenue)} •{" "}
+                  {financialSummary.totalTransactions} transactions
                 </p>
               </div>
             </div>
