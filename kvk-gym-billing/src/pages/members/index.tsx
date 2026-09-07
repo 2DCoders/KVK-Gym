@@ -100,6 +100,47 @@ type MemberEditForm = {
 
 const sriLankanMobileRegex = /^7\d{8}$/;
 const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const minimumDateOfBirth = '1900-01-01';
+
+const getTodayDateInputValue = (): string => {
+  const today = new Date();
+  const month = String(today.getMonth() + 1).padStart(2, '0');
+  const day = String(today.getDate()).padStart(2, '0');
+  return `${today.getFullYear()}-${month}-${day}`;
+};
+
+const validateDateOfBirth = (dateOfBirth: string): string | undefined => {
+  if (!dateOfBirth) {
+    return 'Date of birth is required.';
+  }
+
+  const match = dateOfBirth.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (!match) {
+    return 'Enter a valid date (YYYY-MM-DD).';
+  }
+
+  const year = Number(match[1]);
+  const month = Number(match[2]);
+  const day = Number(match[3]);
+  const date = new Date(0);
+  date.setUTCHours(0, 0, 0, 0);
+  date.setUTCFullYear(year, month - 1, day);
+
+  if (
+    year < 1900 ||
+    date.getUTCFullYear() !== year ||
+    date.getUTCMonth() !== month - 1 ||
+    date.getUTCDate() !== day
+  ) {
+    return 'Enter a valid date of birth between 1900 and today.';
+  }
+
+  if (dateOfBirth > getTodayDateInputValue()) {
+    return 'Date of birth cannot be in the future.';
+  }
+
+  return undefined;
+};
 
 const validateMemberForm = (form: MemberForm): MemberFieldErrors => {
   const errors: MemberFieldErrors = {};
@@ -112,21 +153,8 @@ const validateMemberForm = (form: MemberForm): MemberFieldErrors => {
     errors.lastName = 'Last name is required.';
   }
 
-  if (!form.dateOfBirth) {
-    errors.dateOfBirth = 'Date of birth is required.';
-  } else {
-    // expect yyyy-mm-dd
-    const m = form.dateOfBirth.match(/^(\d{4})-(\d{2})-(\d{2})$/);
-    if (!m) {
-      errors.dateOfBirth = 'Enter a valid date (YYYY-MM-DD).';
-    } else {
-      const y = Number(m[1]);
-      const mo = Number(m[2]);
-      const d = Number(m[3]);
-      const ts = Date.UTC(y, mo - 1, d);
-      if (!isFinite(ts)) errors.dateOfBirth = 'Enter a valid date.';
-    }
-  }
+  const dateOfBirthError = validateDateOfBirth(form.dateOfBirth);
+  if (dateOfBirthError) errors.dateOfBirth = dateOfBirthError;
 
   const phone = form.phone.trim().replace(/[\s-]/g, '');
   if (!sriLankanMobileRegex.test(phone)) {
@@ -155,20 +183,8 @@ const validateMemberEditForm = (form: MemberEditForm): MemberFieldErrors => {
     errors.lastName = 'Last name is required.';
   }
 
-  if (!form.dateOfBirth) {
-    errors.dateOfBirth = 'Date of birth is required.';
-  } else {
-    const m = form.dateOfBirth.match(/^(\d{4})-(\d{2})-(\d{2})$/);
-    if (!m) {
-      errors.dateOfBirth = 'Enter a valid date (YYYY-MM-DD).';
-    } else {
-      const y = Number(m[1]);
-      const mo = Number(m[2]);
-      const d = Number(m[3]);
-      const ts = Date.UTC(y, mo - 1, d);
-      if (!isFinite(ts)) errors.dateOfBirth = 'Enter a valid date.';
-    }
-  }
+  const dateOfBirthError = validateDateOfBirth(form.dateOfBirth);
+  if (dateOfBirthError) errors.dateOfBirth = dateOfBirthError;
 
   const phone = form.phone.trim().replace(/[\s-]/g, '');
   if (!sriLankanMobileRegex.test(phone)) {
@@ -1305,7 +1321,7 @@ export default function Members() {
                     </div>
                     <div>
                       <label className="mb-2 block text-xs font-medium text-gray-900 sm:text-sm">Date of Birth <span className="text-red-500">*</span></label>
-                      <input type="date" value={form.dateOfBirth} onChange={(event) => updateField('dateOfBirth', event.target.value)} className="w-full rounded-lg border border-gray-200 px-4 py-2.5 text-sm outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100" />
+                      <input type="date" min={minimumDateOfBirth} max={getTodayDateInputValue()} value={form.dateOfBirth} onChange={(event) => updateField('dateOfBirth', event.target.value)} className="w-full rounded-lg border border-gray-200 px-4 py-2.5 text-sm outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100" />
                       {fieldErrors.dateOfBirth ? <p className="mt-2 text-[11px] text-red-600 sm:text-xs">{fieldErrors.dateOfBirth}</p> : <p className="mt-2 text-[11px] text-gray-500 sm:text-xs"></p>}
                     </div>
                     <div>
@@ -1849,7 +1865,7 @@ export default function Members() {
                     </div>
                     <div>
                       <label className="mb-2 block text-xs font-medium text-gray-900 sm:text-sm">Date of Birth <span className="text-red-500">*</span></label>
-                      <input type="date" value={editForm.dateOfBirth} onChange={(event) => updateEditField('dateOfBirth', event.target.value)} className="w-full rounded-lg border border-gray-200 px-4 py-2.5 text-sm outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100" />
+                      <input type="date" min={minimumDateOfBirth} max={getTodayDateInputValue()} value={editForm.dateOfBirth} onChange={(event) => updateEditField('dateOfBirth', event.target.value)} className="w-full rounded-lg border border-gray-200 px-4 py-2.5 text-sm outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100" />
                       {editFieldErrors.dateOfBirth ? <p className="mt-2 text-[11px] text-red-600 sm:text-xs">{editFieldErrors.dateOfBirth}</p> : null}
                     </div>
                     <div>
