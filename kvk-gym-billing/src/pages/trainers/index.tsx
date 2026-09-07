@@ -1991,7 +1991,7 @@ export default function Trainers() {
                           Profile Overview
                         </h3>
                         <p className="text-sm text-gray-500">
-                          Information fetched from trainer profile API.
+                          Trainer personal and membership information
                         </p>
                       </div>
                     </div>
