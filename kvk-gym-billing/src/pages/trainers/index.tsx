@@ -1250,14 +1250,16 @@ export default function Trainers() {
                                 >
                                   <Edit size={14} /> Edit
                                 </button>
-                                <button
-                                  onClick={() =>
-                                    openUpdateFingerprintsModal(trainer.id)
-                                  }
-                                  className="flex items-center gap-2 w-full px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 cursor-pointer"
-                                >
-                                  <Fingerprint size={14} /> Fingerprints
-                                </button>
+                                {trainer.status !== "pending" ? (
+                                  <button
+                                    onClick={() =>
+                                      openUpdateFingerprintsModal(trainer.id)
+                                    }
+                                    className="flex items-center gap-2 w-full px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 cursor-pointer"
+                                  >
+                                    <Fingerprint size={14} /> Fingerprints
+                                  </button>
+                                ) : null}
                                 {canDeleteTrainer(trainer) ? (
                                   <button
                                     onClick={() => {

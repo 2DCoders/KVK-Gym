@@ -1200,9 +1200,11 @@ export default function Members() {
                               <button onClick={() => openMembershipModal(p.id)} className="flex items-center gap-2 w-full px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 cursor-pointer">
                                 <CreditCard size={14} /> Membership
                               </button>
-                              <button onClick={() => openUpdateFingerprintsModal(p.id)} className="flex items-center gap-2 w-full px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 cursor-pointer">
-                                <Fingerprint size={14} /> Fingerprints
-                              </button>
+                              {p.status !== 'pending' ? (
+                                <button onClick={() => openUpdateFingerprintsModal(p.id)} className="flex items-center gap-2 w-full px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 cursor-pointer">
+                                  <Fingerprint size={14} /> Fingerprints
+                                </button>
+                              ) : null}
                               {canDeleteMember(p) ? (
                                 <button onClick={() => openDeleteMemberDialog(p)} className="flex items-center gap-2 w-full px-3 py-2 text-sm text-red-600 hover:bg-gray-50 cursor-pointer">
                                   <Trash2 size={14} /> Delete
