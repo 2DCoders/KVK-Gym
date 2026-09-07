@@ -667,7 +667,6 @@ export default function Trainers() {
     setOpenAction(null);
     setIsLoadingTrainerDetails(true);
     setTrainerDetailsError("");
-    setIsViewTrainerOpen(true);
     setIsFingerprintModalOpen(false);
 
     try {

@@ -675,7 +675,6 @@ export default function Members() {
     setOpenAction(null);
     setIsLoadingMemberDetails(true);
     setMemberDetailsError('');
-    setIsViewMemberOpen(true);
     setIsFingerprintModalOpen(false);
 
     try {
