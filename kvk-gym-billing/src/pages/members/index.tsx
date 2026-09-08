@@ -1354,11 +1354,13 @@ export default function Members() {
                         className="w-full rounded-lg border border-gray-200 px-4 py-2.5 text-sm outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100 disabled:bg-gray-100"
                       >
                         <option value="">{isLoadingPlans ? 'Loading plans...' : 'Select a plan'}</option>
-                        {membershipPlans.map((plan) => (
-                          <option key={plan.id} value={plan.id}>
-                            {plan.title} - LKR {plan.price.toLocaleString()}
-                          </option>
-                        ))}
+                        {membershipPlans
+  .filter((plan) => plan.title !== "Day Pass")
+  .map((plan) => (
+    <option key={plan.id} value={plan.id}>
+      {plan.title} - LKR {plan.price.toLocaleString()}
+    </option>
+  ))}
                       </select>
                       {plansError ? <p className="mt-2 text-[11px] text-red-600 sm:text-xs">{plansError}</p> : null}
                       {fieldErrors.membershipPlan ? <p className="mt-2 text-[11px] text-red-600 sm:text-xs">{fieldErrors.membershipPlan}</p> : null}
@@ -1947,11 +1949,13 @@ export default function Members() {
                       className="w-full rounded-lg border border-gray-200 px-4 py-3 text-sm outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
                     >
                       <option value="">Select a plan</option>
-                      {membershipPlans.map((plan) => (
-                        <option key={plan.id} value={plan.id}>
-                          {plan.title} - LKR {plan.price.toLocaleString()}
-                        </option>
-                      ))}
+                      {membershipPlans
+  .filter((plan) => plan.title !== "Day Pass")
+  .map((plan) => (
+    <option key={plan.id} value={plan.id}>
+      {plan.title} - LKR {plan.price.toLocaleString()}
+    </option>
+  ))}
                     </select>
                   </div>
 

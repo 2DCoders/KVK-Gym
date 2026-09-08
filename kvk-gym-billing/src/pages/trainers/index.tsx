@@ -2662,92 +2662,6 @@ export default function Trainers() {
                       </div>
                     </div>
 
-                    <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
-                      <div className="flex items-start justify-between gap-4">
-                        <div>
-                          <h4 className="text-sm font-semibold uppercase tracking-wide text-gray-500">
-                            Trainer Payment Plan
-                          </h4>
-                          <p className="mt-1 text-sm text-gray-500">
-                            Select another plan if needed.
-                          </p>
-                        </div>
-                        {selectedEditMembershipPlan ? (
-                          <span className="inline-flex items-center rounded-full bg-blue-50 px-2.5 py-1 text-xs font-medium text-blue-700">
-                            Current: LKR{" "}
-                            {selectedEditMembershipPlan.price.toLocaleString()}
-                          </span>
-                        ) : null}
-                      </div>
-
-                      <div className="mt-4 grid gap-4 md:grid-cols-2">
-                        <div>
-                          <label className="mb-2 block text-xs font-medium text-gray-900 sm:text-sm">
-                            Membership Plan{" "}
-                            <span className="text-red-500">*</span>
-                          </label>
-                          <select
-                            value={editForm.membershipPlan}
-                            onChange={(event) =>
-                              updateEditField(
-                                "membershipPlan",
-                                event.target.value,
-                              )
-                            }
-                            disabled={
-                              isLoadingPlans || membershipPlans.length === 0
-                            }
-                            className="w-full rounded-lg border border-gray-200 px-4 py-2.5 text-sm outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100 disabled:bg-gray-100"
-                          >
-                            <option value="">
-                              {isLoadingPlans
-                                ? "Loading plans..."
-                                : "Select a plan"}
-                            </option>
-                            {membershipPlans.map((plan) => (
-                              <option key={plan.id} value={plan.id}>
-                                {plan.title} - LKR {plan.price.toLocaleString()}
-                              </option>
-                            ))}
-                          </select>
-                          {plansError ? (
-                            <p className="mt-2 text-[11px] text-red-600 sm:text-xs">
-                              {plansError}
-                            </p>
-                          ) : null}
-                          {editFieldErrors.membershipPlan ? (
-                            <p className="mt-2 text-[11px] text-red-600 sm:text-xs">
-                              {editFieldErrors.membershipPlan}
-                            </p>
-                          ) : null}
-                        </div>
-
-                        <div className="rounded-2xl border border-gray-200 bg-gray-50 px-4 py-4">
-                          <div className="flex items-center justify-between gap-4">
-                            <span className="text-sm font-medium text-gray-600">
-                              Selected Plan
-                            </span>
-                            <span className="text-sm font-semibold text-gray-900">
-                              {selectedEditMembershipPlan
-                                ? selectedEditMembershipPlan.title
-                                : "No plan selected"}
-                            </span>
-                          </div>
-                          <div className="mt-2 flex items-center justify-between gap-4">
-                            <span className="text-sm font-medium text-gray-600">
-                              Price
-                            </span>
-                            <span className="text-base font-semibold text-gray-900">
-                              LKR{" "}
-                              {Number(
-                                selectedEditMembershipPlan?.price || 0,
-                              ).toLocaleString()}
-                            </span>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-
                     <div className="flex items-center justify-end gap-3 border-t border-gray-200 pt-4">
                       <button
                         onClick={closeEditTrainerModal}
@@ -2810,9 +2724,13 @@ export default function Trainers() {
                       <label className="mb-2 block text-sm font-medium text-gray-900">Membership Plan</label>
                       <select value={membershipPlanId} onChange={(event) => setMembershipPlanId(event.target.value)} className="w-full rounded-lg border border-gray-200 px-4 py-3 text-sm outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100">
                         <option value="">Select a plan</option>
-                        {membershipPlans.map((plan) => (
-                          <option key={plan.id} value={plan.id}>{plan.title} - LKR {plan.price.toLocaleString()}</option>
-                        ))}
+                        {membershipPlans
+  .filter((plan) => plan.title !== "Day Pass")
+  .map((plan) => (
+    <option key={plan.id} value={plan.id}>
+      {plan.title} - LKR {plan.price.toLocaleString()}
+    </option>
+  ))}
                       </select>
                     </div>
 
