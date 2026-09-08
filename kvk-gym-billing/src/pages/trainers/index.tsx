@@ -115,6 +115,47 @@ type TrainerEditForm = TrainerForm;
 const TRAINER_PREFIX = "GYM-TRA";
 const sriLankanMobileRegex = /^7\d{8}$/;
 const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const minimumDateOfBirth = "1900-01-01";
+
+const getTodayDateInputValue = (): string => {
+  const today = new Date();
+  const month = String(today.getMonth() + 1).padStart(2, "0");
+  const day = String(today.getDate()).padStart(2, "0");
+  return `${today.getFullYear()}-${month}-${day}`;
+};
+
+const validateDateOfBirth = (dateOfBirth: string): string | undefined => {
+  if (!dateOfBirth) {
+    return "Date of birth is required.";
+  }
+
+  const match = dateOfBirth.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (!match) {
+    return "Enter a valid date (YYYY-MM-DD).";
+  }
+
+  const year = Number(match[1]);
+  const month = Number(match[2]);
+  const day = Number(match[3]);
+  const date = new Date(0);
+  date.setUTCHours(0, 0, 0, 0);
+  date.setUTCFullYear(year, month - 1, day);
+
+  if (
+    year < 1900 ||
+    date.getUTCFullYear() !== year ||
+    date.getUTCMonth() !== month - 1 ||
+    date.getUTCDate() !== day
+  ) {
+    return "Enter a valid date of birth between 1900 and today.";
+  }
+
+  if (dateOfBirth > getTodayDateInputValue()) {
+    return "Date of birth cannot be in the future.";
+  }
+
+  return undefined;
+};
 
 const validateTrainerForm = (form: TrainerForm): TrainerFieldErrors => {
   const errors: TrainerFieldErrors = {};
@@ -127,20 +168,8 @@ const validateTrainerForm = (form: TrainerForm): TrainerFieldErrors => {
     errors.lastName = "Last name is required.";
   }
 
-  if (!form.dateOfBirth) {
-    errors.dateOfBirth = "Date of birth is required.";
-  } else {
-    const m = form.dateOfBirth.match(/^(\d{4})-(\d{2})-(\d{2})$/);
-    if (!m) {
-      errors.dateOfBirth = "Enter a valid date (YYYY-MM-DD).";
-    } else {
-      const y = Number(m[1]);
-      const mo = Number(m[2]);
-      const d = Number(m[3]);
-      const ts = Date.UTC(y, mo - 1, d);
-      if (!isFinite(ts)) errors.dateOfBirth = "Enter a valid date.";
-    }
-  }
+  const dateOfBirthError = validateDateOfBirth(form.dateOfBirth);
+  if (dateOfBirthError) errors.dateOfBirth = dateOfBirthError;
 
   const phone = form.phone.trim().replace(/[\s-]/g, "");
   if (!sriLankanMobileRegex.test(phone)) {
@@ -1569,6 +1598,8 @@ export default function Trainers() {
                         </label>
                         <input
                           type="date"
+                          min={minimumDateOfBirth}
+                          max={getTodayDateInputValue()}
                           value={form.dateOfBirth}
                           onChange={(event) =>
                             updateField("dateOfBirth", event.target.value)
@@ -2554,6 +2585,8 @@ export default function Trainers() {
                         </label>
                         <input
                           type="date"
+                          min={minimumDateOfBirth}
+                          max={getTodayDateInputValue()}
                           value={editForm.dateOfBirth}
                           onChange={(event) =>
                             updateEditField("dateOfBirth", event.target.value)
