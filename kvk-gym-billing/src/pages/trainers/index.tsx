@@ -21,6 +21,7 @@ import {
   getMembers,
   softDeleteMember,
   updateMember,
+  updateMembershipPlan,
 } from "@/services/members-api";
 import { fingerPrintSave } from "@/services/fingerprint-api";
 import { processPayment } from "@/services/payment-api";
@@ -219,6 +220,13 @@ export default function Trainers() {
   const [isSavingTrainerEdit, setIsSavingTrainerEdit] = useState(false);
   const [isLoadingEditTrainer, setIsLoadingEditTrainer] = useState(false);
   const [editTrainerError, setEditTrainerError] = useState("");
+  const [isMembershipModalOpen, setIsMembershipModalOpen] = useState(false);
+  const [membershipTrainerId, setMembershipTrainerId] = useState<string | null>(null);
+  const [membershipTrainerDetails, setMembershipTrainerDetails] = useState<TrainerDetails | null>(null);
+  const [membershipPlanId, setMembershipPlanId] = useState("");
+  const [membershipPaymentMethod, setMembershipPaymentMethod] = useState<"cash" | "card">("cash");
+  const [isSavingMembershipChange, setIsSavingMembershipChange] = useState(false);
+  const [membershipChangeError, setMembershipChangeError] = useState("");
 
   const [deleteTrainerTarget, setDeleteTrainerTarget] =
     useState<TableTrainer | null>(null);
@@ -440,6 +448,9 @@ export default function Trainers() {
   );
   const selectedEditMembershipPlan = membershipPlans.find(
     (plan) => plan.id === editForm.membershipPlan,
+  );
+  const selectedMembershipChangePlan = membershipPlans.find(
+    (plan) => plan.id === membershipPlanId,
   );
 
   const canDeleteTrainer = (trainer: TableTrainer) =>
@@ -742,6 +753,87 @@ export default function Trainers() {
 
   const updateEditField = (field: keyof TrainerEditForm, value: string) => {
     setEditForm((current) => ({ ...current, [field]: value }));
+  };
+
+  const openMembershipModal = async (trainerId: string) => {
+    setOpenAction(null);
+    setIsMembershipModalOpen(true);
+    setMembershipTrainerId(trainerId);
+    setMembershipTrainerDetails(null);
+    setMembershipPlanId("");
+    setMembershipPaymentMethod("cash");
+    setMembershipChangeError("");
+    setIsSavingMembershipChange(false);
+
+    try {
+      const response = await getMemberById(trainerId);
+      const trainer = response;
+
+      if (!trainer) {
+        setMembershipChangeError("Unable to load trainer details for membership change.");
+        return;
+      }
+
+      const trainerDetails = trainer as TrainerDetails;
+      setMembershipTrainerDetails(trainerDetails);
+      setMembershipPlanId(trainerDetails.membershipPlanId ?? "");
+    } catch {
+      setMembershipChangeError("Failed to load trainer details. Please try again.");
+    }
+  };
+
+  const closeMembershipModal = () => {
+    setIsMembershipModalOpen(false);
+    setMembershipTrainerId(null);
+    setMembershipTrainerDetails(null);
+    setMembershipPlanId("");
+    setMembershipPaymentMethod("cash");
+    setMembershipChangeError("");
+    setIsSavingMembershipChange(false);
+  };
+
+  const handleSaveMembershipChange = async () => {
+    if (!membershipTrainerId || !membershipTrainerDetails) return;
+
+    const selectedPlan = membershipPlans.find((plan) => plan.id === membershipPlanId);
+    if (!selectedPlan) {
+      setMembershipChangeError("Select a membership plan to continue.");
+      return;
+    }
+
+    setIsSavingMembershipChange(true);
+    setMembershipChangeError("");
+
+    try {
+      await updateMembershipPlan(membershipTrainerId, {
+        membershipPlanId,
+        paymentType: membershipPaymentMethod === "cash" ? 1 : 2,
+      });
+
+      setPageAlert({
+        visible: true,
+        variant: "success",
+        title: "Membership Updated",
+        description: `Membership plan changed to ${selectedPlan.title} and payment was recorded successfully.`,
+      });
+
+      await fetchTrainers();
+      closeMembershipModal();
+    } catch (error: any) {
+      const message =
+        error?.response?.data?.message ||
+        error?.message ||
+        "Failed to update membership.";
+      setMembershipChangeError(message);
+      setPageAlert({
+        visible: true,
+        variant: "error",
+        title: "Membership Update Failed",
+        description: message,
+      });
+    } finally {
+      setIsSavingMembershipChange(false);
+    }
   };
 
   const buildEditPayload = () => ({
@@ -1250,6 +1342,14 @@ export default function Trainers() {
                                 >
                                   <Edit size={14} /> Edit
                                 </button>
+                                {trainer.status === "approved" ? (
+                                  <button
+                                    onClick={() => openMembershipModal(trainer.id)}
+                                    className="flex items-center gap-2 w-full px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 cursor-pointer"
+                                  >
+                                    <CreditCard size={14} /> Membership
+                                  </button>
+                                ) : null}
                                 {trainer.status !== "pending" ? (
                                   <button
                                     onClick={() =>
@@ -2635,6 +2735,88 @@ export default function Trainers() {
                         {isSavingTrainerEdit ? "Saving..." : "Save Changes"}
                       </button>
                     </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>,
+          document.body,
+        )}
+
+      {isMembershipModalOpen &&
+        createPortal(
+          <div className="fixed inset-0 z-[97] flex items-center justify-center bg-black/60 px-3 py-4 sm:px-4 sm:py-6">
+            <div className="max-h-[92vh] w-full max-w-2xl overflow-hidden rounded-2xl bg-white shadow-2xl">
+              <div className="flex items-start justify-between border-b border-gray-200 px-5 py-4">
+                <div>
+                  <h2 className="text-xl font-semibold text-gray-900 sm:text-2xl">Membership</h2>
+                  <p className="mt-1 text-sm text-gray-500">Change the approved trainer's membership plan and payment method.</p>
+                </div>
+                <button onClick={closeMembershipModal} className="rounded-full p-2 cursor-pointer text-gray-500 transition hover:bg-gray-100 hover:text-gray-900">
+                  <X size={18} />
+                </button>
+              </div>
+
+              <div className="max-h-[calc(92vh-88px)] overflow-y-auto px-5 py-5 sm:px-6 sm:py-6">
+                {membershipChangeError && !membershipTrainerDetails ? (
+                  <div className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{membershipChangeError}</div>
+                ) : membershipTrainerDetails ? (
+                  <div className="space-y-4">
+                    <div className="rounded-2xl border border-gray-200 bg-gray-50 px-4 py-4">
+                      <div className="flex items-center justify-between gap-4">
+                        <span className="text-sm font-medium text-gray-600">Trainer</span>
+                        <span className="text-sm font-semibold text-gray-900">{membershipTrainerDetails.membershipNumber}</span>
+                      </div>
+                      <div className="mt-2 flex items-center justify-between gap-4">
+                        <span className="text-sm font-medium text-gray-600">Current Plan</span>
+                        <span className="text-sm font-semibold text-gray-900">{membershipTrainerDetails.membershipPlanTitle}</span>
+                      </div>
+                    </div>
+
+                    <div>
+                      <label className="mb-2 block text-sm font-medium text-gray-900">Membership Plan</label>
+                      <select value={membershipPlanId} onChange={(event) => setMembershipPlanId(event.target.value)} className="w-full rounded-lg border border-gray-200 px-4 py-3 text-sm outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100">
+                        <option value="">Select a plan</option>
+                        {membershipPlans.map((plan) => (
+                          <option key={plan.id} value={plan.id}>{plan.title} - LKR {plan.price.toLocaleString()}</option>
+                        ))}
+                      </select>
+                    </div>
+
+                    <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
+                      <div className="flex items-center justify-between gap-4">
+                        <span className="text-sm font-medium text-gray-600">Selected Price</span>
+                        <span className="text-base font-semibold text-gray-900">LKR {Number(selectedMembershipChangePlan?.price || 0).toLocaleString()}</span>
+                      </div>
+                    </div>
+
+                    <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
+                      <label className="mb-3 block text-sm font-medium text-gray-900">Payment Type</label>
+                      <div className="flex flex-wrap gap-4">
+                        <label className="inline-flex items-center cursor-pointer gap-2 rounded-xl border border-gray-200 px-4 py-3 text-sm text-gray-700">
+                          <input type="radio" name="trainerMembershipPaymentMethod" value="cash" checked={membershipPaymentMethod === "cash"} onChange={() => setMembershipPaymentMethod("cash")} />
+                          Cash
+                        </label>
+                        <label className="inline-flex items-center cursor-pointer gap-2 rounded-xl border border-gray-200 px-4 py-3 text-sm text-gray-700">
+                          <input type="radio" name="trainerMembershipPaymentMethod" value="card" checked={membershipPaymentMethod === "card"} onChange={() => setMembershipPaymentMethod("card")} />
+                          Card
+                        </label>
+                      </div>
+                    </div>
+
+                    {membershipChangeError ? <p className="text-sm text-red-600">{membershipChangeError}</p> : null}
+                    <div className="flex items-center justify-end gap-3 border-t border-gray-200 pt-4">
+                      <button onClick={closeMembershipModal} className="rounded-lg border border-gray-200 px-4 py-2 text-sm font-medium text-gray-700 transition hover:bg-gray-50 cursor-pointer">Cancel</button>
+                      <button onClick={handleSaveMembershipChange} disabled={isSavingMembershipChange || !membershipPlanId} className="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-5 py-2 text-sm font-medium text-white transition hover:bg-blue-700 cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed">
+                        {isSavingMembershipChange ? <Loader2 size={16} className="animate-spin" /> : <ArrowRight size={16} />}
+                        {isSavingMembershipChange ? "Saving..." : "Save Changes"}
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="flex min-h-[220px] items-center justify-center gap-3">
+                    <Loader2 size={20} className="animate-spin text-blue-600" />
+                    <span className="text-sm text-gray-600">Loading trainer details...</span>
                   </div>
                 )}
               </div>
