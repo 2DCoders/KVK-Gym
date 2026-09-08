@@ -416,10 +416,10 @@ export default function Trainers() {
 
       const mappedPlans: MembershipPlan[] = Array.isArray(plans)
         ? plans.map((plan: any) => ({
-            id: String(plan.id),
-            title: String(plan.title ?? "Unnamed Plan"),
-            price: Number(plan.price ?? 0),
-          }))
+          id: String(plan.id),
+          title: String(plan.title ?? "Unnamed Plan"),
+          price: Number(plan.price ?? 0),
+        }))
         : [];
 
       setMembershipPlans(mappedPlans);
@@ -1297,13 +1297,12 @@ export default function Trainers() {
                         </td>
                         <td className="py-2 px-3 align-top">
                           <span
-                            className={`px-2 py-0.5 rounded-full text-xs font-medium ${
-                              trainer.status === "approved"
+                            className={`px-2 py-0.5 rounded-full text-xs font-medium ${trainer.status === "approved"
                                 ? "bg-emerald-100 text-emerald-700"
                                 : trainer.status === "pending"
                                   ? "bg-amber-100 text-amber-700"
                                   : "bg-red-100 text-red-700"
-                            }`}
+                              }`}
                           >
                             {trainer.status === "approved"
                               ? "Active"
@@ -1694,11 +1693,13 @@ export default function Trainers() {
                               ? "Loading plans..."
                               : "Select a plan"}
                           </option>
-                          {membershipPlans.map((plan) => (
-                            <option key={plan.id} value={plan.id}>
-                              {plan.title} - LKR {plan.price.toLocaleString()}
-                            </option>
-                          ))}
+                          {membershipPlans
+                            .filter((plan) => plan.title !== "Day Pass")
+                            .map((plan) => (
+                              <option key={plan.id} value={plan.id}>
+                                {plan.title} - LKR {plan.price.toLocaleString()}
+                              </option>
+                            ))}
                         </select>
                         {plansError ? (
                           <p className="mt-2 text-[11px] text-red-600 sm:text-xs">
@@ -1882,7 +1883,7 @@ export default function Trainers() {
                                   setSelectedTrainerDetails(
                                     trainer as TrainerDetails,
                                   );
-                              } catch {}
+                              } catch { }
                               setTrainerStep(3);
                             } catch (e: any) {
                               const msg =
@@ -2233,17 +2234,16 @@ export default function Trainers() {
                           <div className="flex items-center justify-between gap-4">
                             <span>Payment Status</span>
                             <span
-                              className={`inline-flex items-center rounded-full px-2.5 py-1 text-xs font-medium ${
-                                selectedTrainerDetails.paymentStatus === 1
+                              className={`inline-flex items-center rounded-full px-2.5 py-1 text-xs font-medium ${selectedTrainerDetails.paymentStatus === 1
                                   ? "bg-amber-100 text-amber-700"
                                   : selectedTrainerDetails.paymentStatus ===
-                                        2 ||
-                                      selectedTrainerDetails.paymentStatus === 4
+                                    2 ||
+                                    selectedTrainerDetails.paymentStatus === 4
                                     ? "bg-emerald-100 text-emerald-700"
                                     : selectedTrainerDetails.paymentStatus === 3
                                       ? "bg-red-100 text-red-700"
                                       : "bg-gray-100 text-gray-700"
-                              }`}
+                                }`}
                             >
                               {paymentStatusLabel(
                                 selectedTrainerDetails.paymentStatus,
@@ -2273,7 +2273,7 @@ export default function Trainers() {
                         Pay
                       </button>
                       {!selectedTrainerDetails.isSavedFingerprints &&
-                      selectedTrainerDetails.paymentStatus !== 1 ? (
+                        selectedTrainerDetails.paymentStatus !== 1 ? (
                         <button
                           onClick={openFingerprintModal}
                           className="inline-flex cursor-pointer items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-blue-700"
