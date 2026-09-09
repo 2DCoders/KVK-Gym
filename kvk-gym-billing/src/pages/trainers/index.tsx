@@ -475,9 +475,6 @@ export default function Trainers() {
   const selectedMembershipPlan = membershipPlans.find(
     (plan) => plan.id === form.membershipPlan,
   );
-  const selectedEditMembershipPlan = membershipPlans.find(
-    (plan) => plan.id === editForm.membershipPlan,
-  );
   const selectedMembershipChangePlan = membershipPlans.find(
     (plan) => plan.id === membershipPlanId,
   );
