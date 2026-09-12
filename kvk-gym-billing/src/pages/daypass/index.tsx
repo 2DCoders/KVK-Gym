@@ -488,7 +488,10 @@ export default function Daypass() {
                           <input
                             value={form.phone}
                             onChange={(event) =>
-                              updateField("phone", event.target.value)
+                              updateField(
+                                "phone",
+                                event.target.value.replace(/\D/g, "").slice(0, 9),
+                              )
                             }
                             inputMode="numeric"
                             maxLength={9}
