@@ -43,6 +43,7 @@ type ApiTrainer = {
   membershipStatus: string;
   membershipPlan: string;
   identityUserId: string | null;
+  isDeleted?: boolean;
 };
 
 type TableTrainer = {
@@ -55,6 +56,7 @@ type TableTrainer = {
   status: TrainerStatus;
   paymentStatus: number;
   isSavedFingerprints: boolean;
+  isDeleted: boolean;
 };
 
 type TrainerDetails = {
@@ -76,6 +78,7 @@ type TrainerDetails = {
   membershipPlanDurationInDays: number;
   identityUserId: string | null;
   isSavedFingerprints: boolean;
+  isDeleted?: boolean;
 };
 
 type TrainerForm = {
@@ -370,7 +373,8 @@ export default function Trainers() {
   const fetchTrainers = async () => {
     setIsLoadingTrainers(true);
     try {
-      const apiTrainers: ApiTrainer[] = await getMembers();
+      // includeDeleted: soft-deleted trainers should still surface, under the Blocked tab
+      const apiTrainers: ApiTrainer[] = await getMembers(true);
 
       const filteredApiTrainers = apiTrainers.filter((trainer) =>
         trainer.membershipNumber.startsWith(TRAINER_PREFIX),
@@ -384,13 +388,15 @@ export default function Trainers() {
           age: calculateAge(trainer.dateOfBirth),
           gender: Number(trainer.gender) === 1 ? "Male" : "Female",
           phone: trainer.phoneNumber ? `+94${trainer.phoneNumber}` : "N/A",
-          status: mapMembershipStatusToTabStatus(trainer.membershipStatus),
+          // Soft-deleted trainers are shown as Blocked regardless of their stored membership status
+          status: trainer.isDeleted ? "blocked" : mapMembershipStatusToTabStatus(trainer.membershipStatus),
           paymentStatus: Number((trainer as any).paymentStatus ?? 0),
           isSavedFingerprints: Boolean(
             (trainer as any).isSavedFingerprints ??
             (trainer as any).fingerprintSaved ??
             false,
           ),
+          isDeleted: Boolean(trainer.isDeleted),
         }),
       );
 
@@ -1060,8 +1066,9 @@ export default function Trainers() {
                         Confirm Delete
                       </h2>
                       <p className="mt-1 text-sm text-gray-500">
-                        This is a dual authorization process. Super admin can
-                        approve or reject the deletion.
+                        This trainer will be moved to Blocked status. An admin
+                        can reactivate them back to their previous status, or
+                        permanently delete them.
                       </p>
                     </div>
                     <button
@@ -1069,7 +1076,7 @@ export default function Trainers() {
                         setDeleteTrainerTarget(null);
                         setDeleteTrainerError("");
                       }}
-                      className="rounded-full p-2 text-gray-500 transition hover:bg-gray-100 hover:text-gray-900"
+                      className="cursor-pointer rounded-full p-2 text-gray-500 transition hover:bg-gray-100 hover:text-gray-900"
                     >
                       <X size={18} />
                     </button>
@@ -1100,7 +1107,7 @@ export default function Trainers() {
                         setDeleteTrainerTarget(null);
                         setDeleteTrainerError("");
                       }}
-                      className="rounded-lg border border-gray-200 bg-white px-4 py-2 text-sm text-gray-700 transition hover:bg-gray-50"
+                      className="cursor-pointer rounded-lg border border-gray-200 bg-white px-4 py-2 text-sm text-gray-700 transition hover:bg-gray-50"
                     >
                       Cancel
                     </button>
@@ -1114,9 +1121,9 @@ export default function Trainers() {
                           setPageAlert({
                             visible: true,
                             variant: "success",
-                            title: "Delete Request Sent",
+                            title: "Trainer Blocked",
                             description:
-                              "The deletion request has been submitted for super admin approval.",
+                              "This trainer has been moved to Blocked status.",
                           });
                           setDeleteTrainerTarget(null);
                           await fetchTrainers();
@@ -1137,7 +1144,7 @@ export default function Trainers() {
                         }
                       }}
                       disabled={isDeletingTrainer}
-                      className="inline-flex items-center gap-2 rounded-lg bg-red-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-70"
+                      className="inline-flex cursor-pointer items-center gap-2 rounded-lg bg-red-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-70"
                     >
                       {isDeletingTrainer ? (
                         <Loader2 size={14} className="animate-spin" />
@@ -1362,44 +1369,48 @@ export default function Trainers() {
                                 >
                                   <Eye size={14} /> View
                                 </button>
-                                <button
-                                  onClick={() =>
-                                    openEditTrainerModal(trainer.id)
-                                  }
-                                  className="flex items-center gap-2 w-full px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 cursor-pointer"
-                                >
-                                  <Edit size={14} /> Edit
-                                </button>
-                                {trainer.status === "approved" ? (
-                                  <button
-                                    onClick={() => openMembershipModal(trainer.id)}
-                                    className="flex items-center gap-2 w-full px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 cursor-pointer"
-                                  >
-                                    <CreditCard size={14} /> Membership
-                                  </button>
-                                ) : null}
-                                {trainer.status !== "pending" ? (
-                                  <button
-                                    onClick={() =>
-                                      openUpdateFingerprintsModal(trainer.id)
-                                    }
-                                    className="flex items-center gap-2 w-full px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 cursor-pointer"
-                                  >
-                                    <Fingerprint size={14} /> Fingerprints
-                                  </button>
-                                ) : null}
-                                {canDeleteTrainer(trainer) ? (
-                                  <button
-                                    onClick={() => {
-                                      setOpenAction(null);
-                                      setDeleteTrainerTarget(trainer);
-                                      setDeleteTrainerError("");
-                                    }}
-                                    className="flex items-center gap-2 w-full px-3 py-2 text-sm text-red-600 hover:bg-gray-50 cursor-pointer"
-                                  >
-                                    <Trash2 size={14} /> Delete
-                                  </button>
-                                ) : null}
+                                {trainer.status !== "blocked" && (
+                                  <>
+                                    <button
+                                      onClick={() =>
+                                        openEditTrainerModal(trainer.id)
+                                      }
+                                      className="flex items-center gap-2 w-full px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 cursor-pointer"
+                                    >
+                                      <Edit size={14} /> Edit
+                                    </button>
+                                    {trainer.status === "approved" ? (
+                                      <button
+                                        onClick={() => openMembershipModal(trainer.id)}
+                                        className="flex items-center gap-2 w-full px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 cursor-pointer"
+                                      >
+                                        <CreditCard size={14} /> Membership
+                                      </button>
+                                    ) : null}
+                                    {trainer.status !== "pending" ? (
+                                      <button
+                                        onClick={() =>
+                                          openUpdateFingerprintsModal(trainer.id)
+                                        }
+                                        className="flex items-center gap-2 w-full px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 cursor-pointer"
+                                      >
+                                        <Fingerprint size={14} /> Fingerprints
+                                      </button>
+                                    ) : null}
+                                    {canDeleteTrainer(trainer) ? (
+                                      <button
+                                        onClick={() => {
+                                          setOpenAction(null);
+                                          setDeleteTrainerTarget(trainer);
+                                          setDeleteTrainerError("");
+                                        }}
+                                        className="flex items-center gap-2 w-full px-3 py-2 text-sm text-red-600 hover:bg-gray-50 cursor-pointer"
+                                      >
+                                        <Trash2 size={14} /> Delete
+                                      </button>
+                                    ) : null}
+                                  </>
+                                )}
                               </div>,
                               document.body,
                             )}
@@ -1445,7 +1456,7 @@ export default function Trainers() {
                   <button
                     key={i}
                     onClick={() => setPage(i + 1)}
-                    className={`px-2 py-1 text-sm rounded-md ${page === i + 1 ? "bg-gray-900 text-white" : "bg-white border"}`}
+                    className={`cursor-pointer px-2 py-1 text-sm rounded-md ${page === i + 1 ? "bg-gray-900 text-white" : "bg-white border"}`}
                   >
                     {i + 1}
                   </button>
@@ -2034,7 +2045,7 @@ export default function Trainers() {
                             Connect the fingerprint reader and capture the
                             biometric data before submission.
                           </p>
-                          <button className="mt-5 inline-flex w-full items-center justify-center gap-2 rounded-lg bg-gray-900 px-4 py-3 text-sm font-medium text-white transition hover:bg-gray-800">
+                          <button className="mt-5 inline-flex w-full cursor-pointer items-center justify-center gap-2 rounded-lg bg-gray-900 px-4 py-3 text-sm font-medium text-white transition hover:bg-gray-800">
                             <Fingerprint size={16} />
                             Start Fingerprint Scan
                           </button>
@@ -2265,23 +2276,27 @@ export default function Trainers() {
                     </div>
 
                     <div className="flex flex-wrap items-center justify-end gap-3 border-t border-gray-200 pt-4">
-                      <button
-                        onClick={openPaymentModal}
-                        className="inline-flex cursor-pointer items-center gap-2 rounded-lg bg-emerald-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-emerald-700"
-                      >
-                        <CreditCard size={16} />
-                        Pay
-                      </button>
-                      {!selectedTrainerDetails.isSavedFingerprints &&
-                        selectedTrainerDetails.paymentStatus !== 1 ? (
-                        <button
-                          onClick={openFingerprintModal}
-                          className="inline-flex cursor-pointer items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-blue-700"
-                        >
-                          <Fingerprint size={16} />
-                          Fingerprints
-                        </button>
-                      ) : null}
+                      {!selectedTrainerDetails.isDeleted && (
+                        <>
+                          <button
+                            onClick={openPaymentModal}
+                            className="inline-flex cursor-pointer items-center gap-2 rounded-lg bg-emerald-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-emerald-700"
+                          >
+                            <CreditCard size={16} />
+                            Pay
+                          </button>
+                          {!selectedTrainerDetails.isSavedFingerprints &&
+                            selectedTrainerDetails.paymentStatus !== 1 ? (
+                            <button
+                              onClick={openFingerprintModal}
+                              className="inline-flex cursor-pointer items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-blue-700"
+                            >
+                              <Fingerprint size={16} />
+                              Fingerprints
+                            </button>
+                          ) : null}
+                        </>
+                      )}
                       <button
                         onClick={closeViewTrainerModal}
                         className="rounded-lg cursor-pointer border border-gray-200 px-4 py-2 text-sm font-medium text-gray-700 transition hover:bg-gray-50"

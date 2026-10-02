@@ -22,6 +22,7 @@ type ApiMember = {
   membershipStatus: string;
   membershipPlan: string;
   identityUserId: string | null;
+  isDeleted?: boolean;
 };
 
 type TableMember = {
@@ -34,6 +35,7 @@ type TableMember = {
   status: MemberStatus;
   paymentStatus: number;
   isSavedFingerprints: boolean;
+  isDeleted: boolean;
 };
 
 type MemberDetails = {
@@ -55,6 +57,7 @@ type MemberDetails = {
   membershipPlanDurationInDays: number;
   identityUserId: string | null;
   isSavedFingerprints: boolean;
+  isDeleted?: boolean;
 };
 
 type MemberForm = {
@@ -368,7 +371,8 @@ export default function Members() {
   const fetchMembers = async () => {
     setIsLoadingMembers(true);
     try {
-      const apiMembers: ApiMember[] = await getMembers();
+      // includeDeleted: soft-deleted members should still surface, under the Blocked Members tab
+      const apiMembers: ApiMember[] = await getMembers(true);
 
       // Filter members to only show those with membershipNumber starting with "GYM-MEM"
       const filteredApiMembers = apiMembers.filter((member) =>
@@ -383,9 +387,11 @@ export default function Members() {
         age: calculateAge(member.dateOfBirth),
         gender: Number(member.gender) === 1 ? "Male" : "Female",
         phone: member.phoneNumber ? `+94${member.phoneNumber}` : 'N/A',
-        status: mapMembershipStatusToTabStatus(member.membershipStatus),
+        // Soft-deleted members are shown as Blocked regardless of their stored membership status
+        status: member.isDeleted ? 'blocked' : mapMembershipStatusToTabStatus(member.membershipStatus),
         paymentStatus: Number((member as any).paymentStatus ?? 0),
         isSavedFingerprints: Boolean((member as any).isSavedFingerprints ?? (member as any).fingerprintSaved ?? false),
+        isDeleted: Boolean(member.isDeleted),
       }));
 
       setMembers(mappedMembers);
@@ -821,8 +827,8 @@ export default function Members() {
       setPageAlert({
         visible: true,
         variant: 'success',
-        title: 'Delete Request Sent',
-        description: 'The deletion request has been submitted for super admin approval.',
+        title: 'Member Blocked',
+        description: 'This member has been moved to Blocked status.',
       });
 
       closeDeleteMemberDialog();
@@ -1200,22 +1206,26 @@ export default function Members() {
                               <button onClick={() => openViewMemberModal(p.id)} className="flex items-center gap-2 w-full px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 cursor-pointer">
                                 <Eye size={14} /> View
                               </button>
-                              <button onClick={() => openEditMemberModal(p.id)} className="flex items-center gap-2 w-full px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 cursor-pointer">
-                                <Edit size={14} /> Edit
-                              </button>
-                              <button onClick={() => openMembershipModal(p.id)} className="flex items-center gap-2 w-full px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 cursor-pointer">
-                                <CreditCard size={14} /> Membership
-                              </button>
-                              {p.status !== 'pending' ? (
-                                <button onClick={() => openUpdateFingerprintsModal(p.id)} className="flex items-center gap-2 w-full px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 cursor-pointer">
-                                  <Fingerprint size={14} /> Fingerprints
-                                </button>
-                              ) : null}
-                              {canDeleteMember(p) ? (
-                                <button onClick={() => openDeleteMemberDialog(p)} className="flex items-center gap-2 w-full px-3 py-2 text-sm text-red-600 hover:bg-gray-50 cursor-pointer">
-                                  <Trash2 size={14} /> Delete
-                                </button>
-                              ) : null}
+                              {p.status !== 'blocked' && (
+                                <>
+                                  <button onClick={() => openEditMemberModal(p.id)} className="flex items-center gap-2 w-full px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 cursor-pointer">
+                                    <Edit size={14} /> Edit
+                                  </button>
+                                  <button onClick={() => openMembershipModal(p.id)} className="flex items-center gap-2 w-full px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 cursor-pointer">
+                                    <CreditCard size={14} /> Membership
+                                  </button>
+                                  {p.status !== 'pending' ? (
+                                    <button onClick={() => openUpdateFingerprintsModal(p.id)} className="flex items-center gap-2 w-full px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 cursor-pointer">
+                                      <Fingerprint size={14} /> Fingerprints
+                                    </button>
+                                  ) : null}
+                                  {canDeleteMember(p) ? (
+                                    <button onClick={() => openDeleteMemberDialog(p)} className="flex items-center gap-2 w-full px-3 py-2 text-sm text-red-600 hover:bg-gray-50 cursor-pointer">
+                                      <Trash2 size={14} /> Delete
+                                    </button>
+                                  ) : null}
+                                </>
+                              )}
                             </div>,
                             document.body,
                           )}
@@ -1243,7 +1253,7 @@ export default function Members() {
               <button onClick={() => setPage(Math.max(1, page - 1))} disabled={page === 1} className="px-3 py-1 cursor-pointer rounded-md border bg-white text-sm disabled:opacity-50">Prev</button>
               <div className="flex items-center gap-1">
                 {Array.from({ length: totalPages }).map((_, i) => (
-                  <button key={i} onClick={() => setPage(i + 1)} className={`px-2 py-1 text-sm rounded-md ${page === i + 1 ? 'bg-gray-900 text-white' : 'bg-white border'}`}>
+                  <button key={i} onClick={() => setPage(i + 1)} className={`cursor-pointer px-2 py-1 text-sm rounded-md ${page === i + 1 ? 'bg-gray-900 text-white' : 'bg-white border'}`}>
                     {i + 1}
                   </button>
                 ))}
@@ -1534,7 +1544,7 @@ export default function Members() {
                       <div className="rounded-2xl border border-gray-200 bg-gray-50 p-5">
                         <h4 className="text-sm font-semibold uppercase tracking-wide text-gray-500">Scan Actions</h4>
                         <p className="mt-3 text-sm text-gray-600">Connect the fingerprint reader and capture the biometric data before submission.</p>
-                        <button className="mt-5 inline-flex w-full items-center justify-center gap-2 rounded-lg bg-gray-900 px-4 py-3 text-sm font-medium text-white transition hover:bg-gray-800">
+                        <button className="mt-5 inline-flex w-full cursor-pointer items-center justify-center gap-2 rounded-lg bg-gray-900 px-4 py-3 text-sm font-medium text-white transition hover:bg-gray-800">
                           <Fingerprint size={16} />
                           Start Fingerprint Scan
                         </button>
@@ -1571,7 +1581,7 @@ export default function Members() {
             <div className="flex items-start justify-between border-b border-gray-200 px-5 py-4">
               <div>
                 <h2 className="text-lg font-semibold text-gray-900">Confirm Delete</h2>
-                <p className="mt-1 text-sm text-gray-500">This is a dual authorization process. Super admin can approve or reject the deletion.</p>
+                <p className="mt-1 text-sm text-gray-500">This member will be moved to Blocked status. An admin can reactivate them back to their previous status, or permanently delete them.</p>
               </div>
               <button onClick={closeDeleteMemberDialog} className="rounded-full cursor-pointer p-2 text-gray-500 transition hover:bg-gray-100 hover:text-gray-900">
                 <X size={18} />
@@ -1682,16 +1692,20 @@ export default function Members() {
                   </div>
 
                   <div className="flex flex-wrap items-center justify-end gap-3 border-t border-gray-200 pt-4">
-                    <button onClick={openPaymentModal} className="inline-flex cursor-pointer items-center gap-2 rounded-lg bg-emerald-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-emerald-700">
-                      <CreditCard size={16} />
-                      Pay
-                    </button>
-                    {!selectedMemberDetails.isSavedFingerprints && selectedMemberDetails.paymentStatus !== 1 ? (
-                      <button onClick={openFingerprintModal} className="inline-flex cursor-pointer items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-blue-700">
-                        <Fingerprint size={16} />
-                        Fingerprints
-                      </button>
-                    ) : null}
+                    {!selectedMemberDetails.isDeleted && (
+                      <>
+                        <button onClick={openPaymentModal} className="inline-flex cursor-pointer items-center gap-2 rounded-lg bg-emerald-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-emerald-700">
+                          <CreditCard size={16} />
+                          Pay
+                        </button>
+                        {!selectedMemberDetails.isSavedFingerprints && selectedMemberDetails.paymentStatus !== 1 ? (
+                          <button onClick={openFingerprintModal} className="inline-flex cursor-pointer items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-blue-700">
+                            <Fingerprint size={16} />
+                            Fingerprints
+                          </button>
+                        ) : null}
+                      </>
+                    )}
                     <button onClick={closeViewMemberModal} className="rounded-lg cursor-pointer border border-gray-200 px-4 py-2 text-sm font-medium text-gray-700 transition hover:bg-gray-50">
                       Close
                     </button>
