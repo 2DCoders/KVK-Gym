@@ -22,7 +22,6 @@ type ApiMember = {
   membershipStatus: string;
   membershipPlan: string;
   identityUserId: string | null;
-  isDeleted?: boolean;
 };
 
 type TableMember = {
@@ -35,7 +34,6 @@ type TableMember = {
   status: MemberStatus;
   paymentStatus: number;
   isSavedFingerprints: boolean;
-  isDeleted: boolean;
 };
 
 type MemberDetails = {
@@ -57,7 +55,6 @@ type MemberDetails = {
   membershipPlanDurationInDays: number;
   identityUserId: string | null;
   isSavedFingerprints: boolean;
-  isDeleted?: boolean;
 };
 
 type MemberForm = {
@@ -371,8 +368,7 @@ export default function Members() {
   const fetchMembers = async () => {
     setIsLoadingMembers(true);
     try {
-      // includeDeleted: soft-deleted members should still surface, under the Blocked Members tab
-      const apiMembers: ApiMember[] = await getMembers(true);
+      const apiMembers: ApiMember[] = await getMembers();
 
       // Filter members to only show those with membershipNumber starting with "GYM-MEM"
       const filteredApiMembers = apiMembers.filter((member) =>
@@ -387,11 +383,9 @@ export default function Members() {
         age: calculateAge(member.dateOfBirth),
         gender: Number(member.gender) === 1 ? "Male" : "Female",
         phone: member.phoneNumber ? `+94${member.phoneNumber}` : 'N/A',
-        // Soft-deleted members are shown as Blocked regardless of their stored membership status
-        status: member.isDeleted ? 'blocked' : mapMembershipStatusToTabStatus(member.membershipStatus),
+        status: mapMembershipStatusToTabStatus(member.membershipStatus),
         paymentStatus: Number((member as any).paymentStatus ?? 0),
         isSavedFingerprints: Boolean((member as any).isSavedFingerprints ?? (member as any).fingerprintSaved ?? false),
-        isDeleted: Boolean(member.isDeleted),
       }));
 
       setMembers(mappedMembers);
@@ -474,8 +468,10 @@ export default function Members() {
   // AND fingerprint enrolled. Previously this required BOTH "still unpaid"
   // AND "no fingerprint", so Delete vanished the instant payment was taken
   // even though fingerprint enrollment was still outstanding.
+  // Blocked rows (currently only reachable via automatic membership-expiry) get the same
+  // action set as Pending rows, so Delete uses the same eligibility check for both.
   const canDeleteMember = (member: TableMember) =>
-    member.status === 'pending' &&
+    (member.status === 'pending' || member.status === 'blocked') &&
     !(member.paymentStatus === 2 && member.isSavedFingerprints);
   const tabs = [
     { key: 'approved', label: 'Approved Members' },
@@ -1206,26 +1202,22 @@ export default function Members() {
                               <button onClick={() => openViewMemberModal(p.id)} className="flex items-center gap-2 w-full px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 cursor-pointer">
                                 <Eye size={14} /> View
                               </button>
-                              {p.status !== 'blocked' && (
-                                <>
-                                  <button onClick={() => openEditMemberModal(p.id)} className="flex items-center gap-2 w-full px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 cursor-pointer">
-                                    <Edit size={14} /> Edit
-                                  </button>
-                                  <button onClick={() => openMembershipModal(p.id)} className="flex items-center gap-2 w-full px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 cursor-pointer">
-                                    <CreditCard size={14} /> Membership
-                                  </button>
-                                  {p.status !== 'pending' ? (
-                                    <button onClick={() => openUpdateFingerprintsModal(p.id)} className="flex items-center gap-2 w-full px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 cursor-pointer">
-                                      <Fingerprint size={14} /> Fingerprints
-                                    </button>
-                                  ) : null}
-                                  {canDeleteMember(p) ? (
-                                    <button onClick={() => openDeleteMemberDialog(p)} className="flex items-center gap-2 w-full px-3 py-2 text-sm text-red-600 hover:bg-gray-50 cursor-pointer">
-                                      <Trash2 size={14} /> Delete
-                                    </button>
-                                  ) : null}
-                                </>
-                              )}
+                              <button onClick={() => openEditMemberModal(p.id)} className="flex items-center gap-2 w-full px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 cursor-pointer">
+                                <Edit size={14} /> Edit
+                              </button>
+                              <button onClick={() => openMembershipModal(p.id)} className="flex items-center gap-2 w-full px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 cursor-pointer">
+                                <CreditCard size={14} /> Membership
+                              </button>
+                              {p.status !== 'pending' && p.status !== 'blocked' ? (
+                                <button onClick={() => openUpdateFingerprintsModal(p.id)} className="flex items-center gap-2 w-full px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 cursor-pointer">
+                                  <Fingerprint size={14} /> Fingerprints
+                                </button>
+                              ) : null}
+                              {canDeleteMember(p) ? (
+                                <button onClick={() => openDeleteMemberDialog(p)} className="flex items-center gap-2 w-full px-3 py-2 text-sm text-red-600 hover:bg-gray-50 cursor-pointer">
+                                  <Trash2 size={14} /> Delete
+                                </button>
+                              ) : null}
                             </div>,
                             document.body,
                           )}
@@ -1692,20 +1684,16 @@ export default function Members() {
                   </div>
 
                   <div className="flex flex-wrap items-center justify-end gap-3 border-t border-gray-200 pt-4">
-                    {!selectedMemberDetails.isDeleted && (
-                      <>
-                        <button onClick={openPaymentModal} className="inline-flex cursor-pointer items-center gap-2 rounded-lg bg-emerald-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-emerald-700">
-                          <CreditCard size={16} />
-                          Pay
-                        </button>
-                        {!selectedMemberDetails.isSavedFingerprints && selectedMemberDetails.paymentStatus !== 1 ? (
-                          <button onClick={openFingerprintModal} className="inline-flex cursor-pointer items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-blue-700">
-                            <Fingerprint size={16} />
-                            Fingerprints
-                          </button>
-                        ) : null}
-                      </>
-                    )}
+                    <button onClick={openPaymentModal} className="inline-flex cursor-pointer items-center gap-2 rounded-lg bg-emerald-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-emerald-700">
+                      <CreditCard size={16} />
+                      Pay
+                    </button>
+                    {!selectedMemberDetails.isSavedFingerprints && selectedMemberDetails.paymentStatus !== 1 ? (
+                      <button onClick={openFingerprintModal} className="inline-flex cursor-pointer items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-blue-700">
+                        <Fingerprint size={16} />
+                        Fingerprints
+                      </button>
+                    ) : null}
                     <button onClick={closeViewMemberModal} className="rounded-lg cursor-pointer border border-gray-200 px-4 py-2 text-sm font-medium text-gray-700 transition hover:bg-gray-50">
                       Close
                     </button>

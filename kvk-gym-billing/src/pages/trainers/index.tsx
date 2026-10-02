@@ -43,7 +43,6 @@ type ApiTrainer = {
   membershipStatus: string;
   membershipPlan: string;
   identityUserId: string | null;
-  isDeleted?: boolean;
 };
 
 type TableTrainer = {
@@ -56,7 +55,6 @@ type TableTrainer = {
   status: TrainerStatus;
   paymentStatus: number;
   isSavedFingerprints: boolean;
-  isDeleted: boolean;
 };
 
 type TrainerDetails = {
@@ -78,7 +76,6 @@ type TrainerDetails = {
   membershipPlanDurationInDays: number;
   identityUserId: string | null;
   isSavedFingerprints: boolean;
-  isDeleted?: boolean;
 };
 
 type TrainerForm = {
@@ -373,8 +370,7 @@ export default function Trainers() {
   const fetchTrainers = async () => {
     setIsLoadingTrainers(true);
     try {
-      // includeDeleted: soft-deleted trainers should still surface, under the Blocked tab
-      const apiTrainers: ApiTrainer[] = await getMembers(true);
+      const apiTrainers: ApiTrainer[] = await getMembers();
 
       const filteredApiTrainers = apiTrainers.filter((trainer) =>
         trainer.membershipNumber.startsWith(TRAINER_PREFIX),
@@ -388,15 +384,13 @@ export default function Trainers() {
           age: calculateAge(trainer.dateOfBirth),
           gender: Number(trainer.gender) === 1 ? "Male" : "Female",
           phone: trainer.phoneNumber ? `+94${trainer.phoneNumber}` : "N/A",
-          // Soft-deleted trainers are shown as Blocked regardless of their stored membership status
-          status: trainer.isDeleted ? "blocked" : mapMembershipStatusToTabStatus(trainer.membershipStatus),
+          status: mapMembershipStatusToTabStatus(trainer.membershipStatus),
           paymentStatus: Number((trainer as any).paymentStatus ?? 0),
           isSavedFingerprints: Boolean(
             (trainer as any).isSavedFingerprints ??
             (trainer as any).fingerprintSaved ??
             false,
           ),
-          isDeleted: Boolean(trainer.isDeleted),
         }),
       );
 
@@ -489,8 +483,10 @@ export default function Trainers() {
   // AND fingerprint enrolled. Previously this required BOTH "still unpaid"
   // AND "no fingerprint", so Delete vanished the instant payment was taken
   // even though fingerprint enrollment was still outstanding.
+  // Blocked rows (currently only reachable via automatic membership-expiry) get the same
+  // action set as Pending rows, so Delete uses the same eligibility check for both.
   const canDeleteTrainer = (trainer: TableTrainer) =>
-    trainer.status === "pending" &&
+    (trainer.status === "pending" || trainer.status === "blocked") &&
     !(trainer.paymentStatus === 2 && trainer.isSavedFingerprints);
 
   const tabs = [
@@ -1369,48 +1365,44 @@ export default function Trainers() {
                                 >
                                   <Eye size={14} /> View
                                 </button>
-                                {trainer.status !== "blocked" && (
-                                  <>
-                                    <button
-                                      onClick={() =>
-                                        openEditTrainerModal(trainer.id)
-                                      }
-                                      className="flex items-center gap-2 w-full px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 cursor-pointer"
-                                    >
-                                      <Edit size={14} /> Edit
-                                    </button>
-                                    {trainer.status === "approved" ? (
-                                      <button
-                                        onClick={() => openMembershipModal(trainer.id)}
-                                        className="flex items-center gap-2 w-full px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 cursor-pointer"
-                                      >
-                                        <CreditCard size={14} /> Membership
-                                      </button>
-                                    ) : null}
-                                    {trainer.status !== "pending" ? (
-                                      <button
-                                        onClick={() =>
-                                          openUpdateFingerprintsModal(trainer.id)
-                                        }
-                                        className="flex items-center gap-2 w-full px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 cursor-pointer"
-                                      >
-                                        <Fingerprint size={14} /> Fingerprints
-                                      </button>
-                                    ) : null}
-                                    {canDeleteTrainer(trainer) ? (
-                                      <button
-                                        onClick={() => {
-                                          setOpenAction(null);
-                                          setDeleteTrainerTarget(trainer);
-                                          setDeleteTrainerError("");
-                                        }}
-                                        className="flex items-center gap-2 w-full px-3 py-2 text-sm text-red-600 hover:bg-gray-50 cursor-pointer"
-                                      >
-                                        <Trash2 size={14} /> Delete
-                                      </button>
-                                    ) : null}
-                                  </>
-                                )}
+                                <button
+                                  onClick={() =>
+                                    openEditTrainerModal(trainer.id)
+                                  }
+                                  className="flex items-center gap-2 w-full px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 cursor-pointer"
+                                >
+                                  <Edit size={14} /> Edit
+                                </button>
+                                {trainer.status === "approved" ? (
+                                  <button
+                                    onClick={() => openMembershipModal(trainer.id)}
+                                    className="flex items-center gap-2 w-full px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 cursor-pointer"
+                                  >
+                                    <CreditCard size={14} /> Membership
+                                  </button>
+                                ) : null}
+                                {trainer.status !== "pending" && trainer.status !== "blocked" ? (
+                                  <button
+                                    onClick={() =>
+                                      openUpdateFingerprintsModal(trainer.id)
+                                    }
+                                    className="flex items-center gap-2 w-full px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 cursor-pointer"
+                                  >
+                                    <Fingerprint size={14} /> Fingerprints
+                                  </button>
+                                ) : null}
+                                {canDeleteTrainer(trainer) ? (
+                                  <button
+                                    onClick={() => {
+                                      setOpenAction(null);
+                                      setDeleteTrainerTarget(trainer);
+                                      setDeleteTrainerError("");
+                                    }}
+                                    className="flex items-center gap-2 w-full px-3 py-2 text-sm text-red-600 hover:bg-gray-50 cursor-pointer"
+                                  >
+                                    <Trash2 size={14} /> Delete
+                                  </button>
+                                ) : null}
                               </div>,
                               document.body,
                             )}
@@ -2276,27 +2268,23 @@ export default function Trainers() {
                     </div>
 
                     <div className="flex flex-wrap items-center justify-end gap-3 border-t border-gray-200 pt-4">
-                      {!selectedTrainerDetails.isDeleted && (
-                        <>
-                          <button
-                            onClick={openPaymentModal}
-                            className="inline-flex cursor-pointer items-center gap-2 rounded-lg bg-emerald-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-emerald-700"
-                          >
-                            <CreditCard size={16} />
-                            Pay
-                          </button>
-                          {!selectedTrainerDetails.isSavedFingerprints &&
-                            selectedTrainerDetails.paymentStatus !== 1 ? (
-                            <button
-                              onClick={openFingerprintModal}
-                              className="inline-flex cursor-pointer items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-blue-700"
-                            >
-                              <Fingerprint size={16} />
-                              Fingerprints
-                            </button>
-                          ) : null}
-                        </>
-                      )}
+                      <button
+                        onClick={openPaymentModal}
+                        className="inline-flex cursor-pointer items-center gap-2 rounded-lg bg-emerald-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-emerald-700"
+                      >
+                        <CreditCard size={16} />
+                        Pay
+                      </button>
+                      {!selectedTrainerDetails.isSavedFingerprints &&
+                        selectedTrainerDetails.paymentStatus !== 1 ? (
+                        <button
+                          onClick={openFingerprintModal}
+                          className="inline-flex cursor-pointer items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-blue-700"
+                        >
+                          <Fingerprint size={16} />
+                          Fingerprints
+                        </button>
+                      ) : null}
                       <button
                         onClick={closeViewTrainerModal}
                         className="rounded-lg cursor-pointer border border-gray-200 px-4 py-2 text-sm font-medium text-gray-700 transition hover:bg-gray-50"
