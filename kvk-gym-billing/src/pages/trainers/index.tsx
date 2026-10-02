@@ -1373,14 +1373,12 @@ export default function Trainers() {
                                 >
                                   <Edit size={14} /> Edit
                                 </button>
-                                {trainer.status === "approved" ? (
-                                  <button
-                                    onClick={() => openMembershipModal(trainer.id)}
-                                    className="flex items-center gap-2 w-full px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 cursor-pointer"
-                                  >
-                                    <CreditCard size={14} /> Membership
-                                  </button>
-                                ) : null}
+                                <button
+                                  onClick={() => openMembershipModal(trainer.id)}
+                                  className="flex items-center gap-2 w-full px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 cursor-pointer"
+                                >
+                                  <CreditCard size={14} /> Membership
+                                </button>
                                 {trainer.status !== "pending" && trainer.status !== "blocked" ? (
                                   <button
                                     onClick={() =>
