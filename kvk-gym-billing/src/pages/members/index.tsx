@@ -1,3 +1,5 @@
+import PaymentReceiptField from "@/components/payment-receipt-field";
+import { encodeReceipt } from "@/services/receipt-file";
 import { createPortal } from 'react-dom';
 import { useEffect, useState } from 'react';
 import { ArrowLeft, ArrowRight, CreditCard, Fingerprint, Loader2, MoreVertical, Plus, Search, UserRound, X, Eye, Edit, Trash2 } from 'lucide-react';
@@ -239,7 +241,9 @@ export default function Members() {
   const [memberDetailsError, setMemberDetailsError] = useState('');
   const [selectedMemberDetails, setSelectedMemberDetails] = useState<MemberDetails | null>(null);
   const [isPayModalOpen, setIsPayModalOpen] = useState(false);
-  const [paymentMethod, setPaymentMethod] = useState<'cash' | 'card'>('cash');
+  const [paymentMethod, setPaymentMethod] = useState<"cash" | "card" | "receipt">('cash');
+  const [paymentReceipt, setPaymentReceipt] = useState<File>();
+  const [planReceipt, setPlanReceipt] = useState<File>();
   const [paymentRemark, setPaymentRemark] = useState('');
   const [payLoading, setPayLoading] = useState(false);
   const [isFingerprintModalOpen, setIsFingerprintModalOpen] = useState(false);
@@ -258,7 +262,7 @@ export default function Members() {
   const [membershipMemberId, setMembershipMemberId] = useState<string | null>(null);
   const [membershipMemberDetails, setMembershipMemberDetails] = useState<MemberDetails | null>(null);
   const [membershipPlanId, setMembershipPlanId] = useState('');
-  const [membershipPaymentMethod, setMembershipPaymentMethod] = useState<'cash' | 'card'>('cash');
+  const [membershipPaymentMethod, setMembershipPaymentMethod] = useState<"cash" | "card" | "receipt">('cash');
   const [isSavingMembershipChange, setIsSavingMembershipChange] = useState(false);
   const [membershipChangeError, setMembershipChangeError] = useState('');
   const [deleteMemberTarget, setDeleteMemberTarget] = useState<TableMember | null>(null);
@@ -480,6 +484,7 @@ export default function Members() {
   ] as const;
 
   const openNewMemberModal = () => {
+    setPaymentReceipt(undefined);
     setForm(initialMemberForm);
     setFieldErrors({});
     setSubmitError('');
@@ -652,6 +657,7 @@ export default function Members() {
     setIsPayModalOpen(false);
     setIsFingerprintModalOpen(false);
     setPaymentMethod('cash');
+    setPaymentReceipt(undefined);
     setPaymentRemark('');
     setFingerprintId1('DUMMY_FINGERPRINT_1');
     setFingerprintId2('DUMMY_FINGERPRINT_2');
@@ -661,6 +667,7 @@ export default function Members() {
     if (!selectedMemberDetails) return;
 
     setPaymentMethod('cash');
+    setPaymentReceipt(undefined);
     setPaymentRemark('');
     setIsPayModalOpen(true);
   };
@@ -668,6 +675,7 @@ export default function Members() {
   const closePaymentModal = () => {
     setIsPayModalOpen(false);
     setPaymentMethod('cash');
+    setPaymentReceipt(undefined);
     setPaymentRemark('');
   };
 
@@ -763,6 +771,7 @@ export default function Members() {
     setMembershipMemberId(memberId);
     setMembershipMemberDetails(null);
     setMembershipPlanId('');
+    setPlanReceipt(undefined);
     setMembershipPaymentMethod('cash');
     setMembershipChangeError('');
     setIsSavingMembershipChange(false);
@@ -789,6 +798,7 @@ export default function Members() {
     setMembershipMemberId(null);
     setMembershipMemberDetails(null);
     setMembershipPlanId('');
+    setPlanReceipt(undefined);
     setMembershipPaymentMethod('cash');
     setMembershipChangeError('');
     setIsSavingMembershipChange(false);
@@ -920,7 +930,8 @@ export default function Members() {
     try {
       const payload = {
         membershipPlanId: membershipPlanId,
-        paymentType: membershipPaymentMethod === 'cash' ? 1 : 2,
+        paymentType: membershipPaymentMethod === "receipt" ? 6 : membershipPaymentMethod === "cash" ? 1 : 2,
+        receipt: membershipPaymentMethod === "receipt" ? await encodeReceipt(planReceipt, true) : undefined,
       } as any;
 
       await updateMembershipPlan(membershipMemberId, payload);
@@ -1009,21 +1020,21 @@ export default function Members() {
     if (!selectedMemberDetails) return;
 
     const amount = Number(selectedMemberDetails.membershipPlanPrice || 0);
-    const methodLabel = paymentMethod === 'card' ? 'Card' : 'Cash';
+    const methodLabel = paymentMethod === "receipt" ? "Receipt upload" : paymentMethod === "card" ? "Card" : "Cash";
     const confirmMessage = `Confirm payment of LKR ${amount.toLocaleString()} via ${methodLabel}?` + (paymentRemark.trim() ? `\n\nRemark: ${paymentRemark.trim()}` : '');
 
     if (!window.confirm(confirmMessage)) return;
 
     const paymentData: any = {
       amount,
-      paymentType: paymentMethod === 'cash' ? 1 : 2,
-      paymentStatus: 1,
+      paymentType: paymentMethod === "receipt" ? 6 : paymentMethod === "cash" ? 1 : 2,
+      paymentStatus: 2,
       transactionReference: null,
     };
 
     setPayLoading(true);
     try {
-      await processPayment(paymentData, selectedMemberDetails.id);
+      await processPayment({ ...paymentData, receipt: paymentMethod === "receipt" ? await encodeReceipt(paymentReceipt, true) : undefined }, selectedMemberDetails.id);
 
       setPageAlert({
         visible: true,
@@ -1420,10 +1431,15 @@ export default function Members() {
                         <input type="radio" name="regPaymentMethod" value="card" checked={paymentMethod === 'card'} onChange={() => setPaymentMethod('card')} />
                         Card
                       </label>
+                      <label className="inline-flex cursor-pointer items-center gap-2 rounded-xl border border-gray-200 px-4 py-3 text-sm text-gray-700">
+                        <input type="radio" name="regPaymentMethod" value="receipt" checked={paymentMethod === "receipt"} onChange={() => setPaymentMethod("receipt")} />
+                        Receipt upload
+                      </label>
                     </div>
                   </div>
 
                   <div>
+                    {paymentMethod === "receipt" && <PaymentReceiptField file={paymentReceipt} onChange={setPaymentReceipt} required disabled={payLoading} />}
                     <label className="mb-2 block text-sm font-medium text-gray-900">Remark <span className="text-gray-400 font-normal">(optional)</span></label>
                     <textarea value={paymentRemark} onChange={(event) => setPaymentRemark(event.target.value)} rows={4} className="w-full rounded-lg border border-gray-200 px-4 py-3 text-sm outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100" placeholder="Add a remark about the payment..." />
                   </div>
@@ -1444,12 +1460,12 @@ export default function Members() {
                         }
 
                         const amt = Number(selectedMembershipPlan?.price || 0);
-                        const confirmMsg = `Confirm payment of LKR ${amt.toLocaleString()} via ${paymentMethod === 'card' ? 'Card' : 'Cash'}?` + (paymentRemark.trim() ? `\n\nRemark: ${paymentRemark.trim()}` : '');
+                        const confirmMsg = `Confirm payment of LKR ${amt.toLocaleString()} via ${paymentMethod === "receipt" ? "Receipt upload" : paymentMethod === "card" ? "Card" : "Cash"}?` + (paymentRemark.trim() ? `\n\nRemark: ${paymentRemark.trim()}` : '');
                         if (!window.confirm(confirmMsg)) return;
 
                         setPayLoading(true);
                         try {
-                          await processPayment({ amount: amt, paymentType: paymentMethod === 'cash' ? 1 : 2, paymentStatus: 1, transactionReference: null, startDate: new Date().toISOString() }, registeredMemberId);
+                          await processPayment({ amount: amt, paymentType: paymentMethod === "receipt" ? 6 : paymentMethod === "cash" ? 1 : 2, paymentStatus: 2, transactionReference: null, startDate: new Date().toISOString(), receipt: paymentMethod === "receipt" ? await encodeReceipt(paymentReceipt, true) : undefined }, registeredMemberId);
                           setPageAlert({ visible: true, variant: 'success', title: 'Payment Processed', description: `Payment of LKR ${amt.toLocaleString()} successful.` });
                           try {
                             const detailResp = await getMemberById(registeredMemberId);
@@ -1741,10 +1757,15 @@ export default function Members() {
                       <input type="radio" name="paymentMethod" value="card" checked={paymentMethod === 'card'} onChange={() => setPaymentMethod('card')} />
                       Card
                     </label>
+                    <label className="inline-flex cursor-pointer items-center gap-2 rounded-xl border border-gray-200 px-4 py-3 text-sm text-gray-700">
+                      <input type="radio" name="paymentMethod" value="receipt" checked={paymentMethod === "receipt"} onChange={() => setPaymentMethod("receipt")} />
+                      Receipt upload
+                    </label>
                   </div>
                 </div>
 
                 <div>
+                  {paymentMethod === "receipt" && <PaymentReceiptField file={paymentReceipt} onChange={setPaymentReceipt} required disabled={payLoading} />}
                   <label className="mb-2 block text-sm font-medium text-gray-900">Remark <span className="text-gray-400 font-normal">(optional)</span></label>
                   <textarea
                     value={paymentRemark}
@@ -1987,9 +2008,14 @@ export default function Members() {
                         <input type="radio" name="membershipPaymentMethod" value="card" checked={membershipPaymentMethod === 'card'} onChange={() => setMembershipPaymentMethod('card')} />
                         Card
                       </label>
+                      <label className="inline-flex cursor-pointer items-center gap-2 rounded-xl border border-gray-200 px-4 py-3 text-sm text-gray-700">
+                        <input type="radio" name="membershipPaymentMethod" value="receipt" checked={membershipPaymentMethod === "receipt"} onChange={() => setMembershipPaymentMethod("receipt")} />
+                        Receipt upload
+                      </label>
                     </div>
                   </div>
 
+                  {membershipPaymentMethod === "receipt" && <PaymentReceiptField file={planReceipt} onChange={setPlanReceipt} required disabled={isSavingMembershipChange} />}
                   <div className="flex items-center justify-end gap-3 border-t border-gray-200 pt-4">
                     <button onClick={closeMembershipModal} className="rounded-lg border border-gray-200 px-4 py-2 text-sm font-medium text-gray-700 transition hover:bg-gray-50 cursor-pointer">
                       Cancel

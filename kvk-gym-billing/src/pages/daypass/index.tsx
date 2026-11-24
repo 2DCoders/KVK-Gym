@@ -1,3 +1,5 @@
+import PaymentReceiptField from "@/components/payment-receipt-field";
+import { encodeReceipt } from "@/services/receipt-file";
 import Alert from "@/components/ui/alert";
 import {
   getDayPassMembers,
@@ -16,6 +18,7 @@ export default function Daypass() {
   const [isLoading, setisLoading] = useState(false);
   const [isNewDayPassOpen, setIsNewDayPassOpen] = useState(false);
   const [Error, setError] = useState<string | null>(null);
+  const [paymentReceipt, setPaymentReceipt] = useState<File>();
   const [isRegistering, setIsRegistering] = useState(false);
   const [membershipPlans, setMembershipPlans] = useState<any[]>([]); // Replace with actual membership plan type
   const [isLoadingPlans, setIsLoadingPlans] = useState(false);
@@ -32,7 +35,7 @@ export default function Daypass() {
     membershipPlan: "",
   });
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
-  const [paymentMethod, setPaymentMethod] = useState<"cash" | "card">("cash");
+  const [paymentMethod, setPaymentMethod] = useState<"cash" | "card" | "receipt">("cash");
   const [pageItems, setPageItems] = useState<any[]>([]); // Replace with actual day pass member type
 
   const navigate = useNavigate();
@@ -117,12 +120,12 @@ export default function Daypass() {
       membershipPlanId: form.membershipPlan,
       amount:
         membershipPlans.find((p) => p.id === form.membershipPlan)?.price ?? 0,
-      paymentType: paymentMethod === "cash" ? 1 : 2,
+      paymentType: paymentMethod === "receipt" ? 6 : paymentMethod === "cash" ? 1 : 2,
       paymentStatus: 2,
     };
 
     try {
-      const response = await registerDayPassMember(body);
+      const response = await registerDayPassMember({ ...body, receipt: paymentMethod === "receipt" ? await encodeReceipt(paymentReceipt, true) : undefined });
       setPageAlert({
         visible: true,
         variant: "success",
@@ -211,6 +214,7 @@ export default function Daypass() {
   };
 
   const openNewDaypassModal = () => {
+    setPaymentReceipt(undefined);
     setIsNewDayPassOpen(true);
   };
 
@@ -590,6 +594,10 @@ export default function Daypass() {
                             />
                             Card
                           </label>
+                          <label className="inline-flex cursor-pointer items-center gap-2 rounded-xl border border-gray-200 px-4 py-3 text-sm text-gray-700">
+                            <input type="radio" name="regPaymentMethod" value="receipt" checked={paymentMethod === "receipt"} onChange={() => setPaymentMethod("receipt")} />
+                            Receipt upload
+                          </label>
                           {fieldErrors.paymentMethod && (
                             <p className="mt-2 text-xs text-red-600">
                               {fieldErrors.paymentMethod}
@@ -599,6 +607,7 @@ export default function Daypass() {
                       </div>
                     </div>
 
+                    {paymentMethod === "receipt" && <PaymentReceiptField file={paymentReceipt} onChange={setPaymentReceipt} required disabled={isRegistering} />}
                     <div className="flex items-center justify-end gap-3 border-t border-gray-200 pt-4 mb-5.5">
                       <button
                         onClick={closeNewDayPassModal}

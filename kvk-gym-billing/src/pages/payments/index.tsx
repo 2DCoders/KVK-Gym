@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { isAxiosError } from "axios";
 import {
   Banknote,
   CreditCard,
@@ -8,10 +9,12 @@ import {
   TrendingUp,
 } from "lucide-react";
 import { getFinancialSummary } from "@/services/financial-api";
-import { getPayments } from "@/services/payments-api";
+import { downloadPaymentReceipt, getPayments } from "@/services/payments-api";
 import { useNavigate } from "react-router-dom";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
+
+type ReceiptPayment = { id: string; member: string; isDayPass: boolean; hasReceipt: boolean };
 
 export default function Payments() {
   const today = new Date();
@@ -24,6 +27,8 @@ export default function Payments() {
   const [payments, setPayments] = useState<any[]>([]);
   const [isLoadingPayments, setIsLoadingPayments] = useState(false);
   const [paymentsError, setPaymentsError] = useState("");
+  const [receiptBusy, setReceiptBusy] = useState("");
+  const [receiptFeedback, setReceiptFeedback] = useState<{ error: boolean; message: string }>();
   const [financialSummary, setFinancialSummary] = useState({
     totalRevenue: 0,
     cashRevenue: 0,
@@ -32,6 +37,28 @@ export default function Payments() {
   });
 
   const navigate = useNavigate();
+
+  async function downloadReceipt(payment: ReceiptPayment) {
+    const key = `${payment.isDayPass}:${payment.id}`;
+    if (receiptBusy) return;
+    setReceiptBusy(key);
+    setReceiptFeedback(undefined);
+    try {
+      const blob = await downloadPaymentReceipt(payment.id, payment.isDayPass);
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      const extension = blob.type === "image/png" ? "png" : blob.type === "image/jpeg" ? "jpg" : "pdf";
+      link.href = url;
+      link.download = `gym-receipt-${payment.id}.${extension}`;
+      link.click();
+      window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+    } catch (error) {
+      const responseMessage = isAxiosError(error) ? error.response?.data?.message : undefined;
+      setReceiptFeedback({ error: true, message: typeof responseMessage === "string" ? responseMessage : "Unable to download the receipt. Please try again." });
+    } finally {
+      setReceiptBusy("");
+    }
+  }
 
   const dayendData = localStorage.getItem("dayEndData")
     ? JSON.parse(localStorage.getItem("dayEndData") as string)
@@ -134,6 +161,8 @@ export default function Payments() {
       const mappedPayments = Array.isArray(rows)
         ? rows.map((payment: any) => ({
           id: payment.id,
+          isDayPass: !!payment.isDayPass,
+          hasReceipt: !!payment.hasReceipt,
           member: `${payment.memberFirstName ?? ""} ${payment.memberLastName ?? ""
             }`.trim(),
           memberFirstName: payment.memberFirstName ?? "",
@@ -143,6 +172,7 @@ export default function Payments() {
           amount: Number(payment.amount ?? 0),
           date: payment.createdAt ?? payment.startDate,
           method:
+            payment.paymentType === 6 ? "Receipt upload" :
             payment.paymentType === 1
               ? "Cash"
               : payment.paymentType === 2
@@ -320,6 +350,10 @@ export default function Payments() {
           </div>
 
           <div className="px-4 py-3">
+            {receiptFeedback && <p role={receiptFeedback.error ? "alert" : "status"}
+              className={`mb-3 rounded-lg px-3 py-2 text-sm ${receiptFeedback.error ? "bg-red-50 text-red-800" : "bg-green-50 text-green-800"}`}>
+              {receiptFeedback.message}
+            </p>}
             <div className="overflow-x-auto">
               <table className="w-full table-auto text-sm">
                 <thead>
@@ -328,13 +362,14 @@ export default function Payments() {
                     <th className="py-2 px-3">AMOUNT</th>
                     <th className="py-2 px-3">DATE</th>
                     <th className="py-2 px-3">METHOD</th>
+                    <th className="py-2 px-3">RECEIPT</th>
                   </tr>
                 </thead>
                 <tbody>
                   {isLoadingPayments ? (
                     <tr>
                       <td
-                        colSpan={4}
+                        colSpan={5}
                         className="py-8 text-center text-sm text-gray-500"
                       >
                         Loading payments...
@@ -343,7 +378,7 @@ export default function Payments() {
                   ) : paymentsError ? (
                     <tr>
                       <td
-                        colSpan={4}
+                        colSpan={5}
                         className="py-8 text-center text-sm text-red-600"
                       >
                         {paymentsError}
@@ -382,6 +417,15 @@ export default function Payments() {
                           <span className="px-2 py-0.5 rounded-full bg-gray-100 text-gray-700 text-xs">
                             {payment.method}
                           </span>
+                        </td>
+                        <td className="py-2 px-3 align-top">
+                          <div className="flex flex-wrap items-center gap-2 whitespace-nowrap">
+                            {!payment.hasReceipt && <span className="text-xs text-gray-400">—</span>}
+                            {payment.hasReceipt && <button type="button" disabled={!!receiptBusy}
+                              aria-label={`Download receipt for ${payment.member}`}
+                              className="rounded-md border border-gray-200 p-1 text-slate-600 hover:bg-slate-100 disabled:opacity-50"
+                              onClick={() => void downloadReceipt(payment)}><Download size={15} /></button>}
+                          </div>
                         </td>
                       </tr>
                     ))

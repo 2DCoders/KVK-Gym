@@ -19,12 +19,14 @@ type CashierPayment = {
     transactionReference?: string | null;
     startDate?: string;
     endDate?: string;
+    receipt?: string;
 };
 
 export const processPayment = async (paymentData: CashierPayment, memberId: string) => {
     const storageKey = `gymCashierPayment:${memberId}:${paymentData.amount}:${paymentData.paymentType}:${paymentData.paymentStatus}`;
+    const previousKey = `gymCashierPayment:${memberId}:${paymentData.amount}:${paymentData.paymentType}:1`;
     const reference = paymentData.transactionReference ||
-        localStorage.getItem(storageKey) || `GYM-CASHIER-${crypto.randomUUID()}`;
+        localStorage.getItem(storageKey) || localStorage.getItem(previousKey) || `GYM-CASHIER-${crypto.randomUUID()}`;
     localStorage.setItem(storageKey, reference);
 
     const response = await axios.post(`${MEMBERS_API_URL}${memberId}/payments/`, {
@@ -37,5 +39,6 @@ export const processPayment = async (paymentData: CashierPayment, memberId: stri
     if (localStorage.getItem(storageKey) === reference) {
         localStorage.removeItem(storageKey);
     }
+    if (localStorage.getItem(previousKey) === reference) localStorage.removeItem(previousKey);
     return response.data;
 }
