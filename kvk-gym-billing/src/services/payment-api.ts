@@ -12,15 +12,33 @@ const getToken = () => {
     return cashier ? cashier.token : null;
 };
 
-export const processPayment = async (paymentData: any, memberId: string) => {
-    try {
-        const response = await axios.post(`${MEMBERS_API_URL}${memberId}/payments/`, paymentData, {
-            headers: {
-                Authorization: `Bearer ${getToken()}`,
-            },
-        });
-        return response.data;
-    } catch (error) {
-        throw error;
+type CashierPayment = {
+    amount: number;
+    paymentType: number;
+    paymentStatus: number;
+    transactionReference?: string | null;
+    startDate?: string;
+    endDate?: string;
+    receipt?: string;
+};
+
+export const processPayment = async (paymentData: CashierPayment, memberId: string) => {
+    const storageKey = `gymCashierPayment:${memberId}:${paymentData.amount}:${paymentData.paymentType}:${paymentData.paymentStatus}`;
+    const previousKey = `gymCashierPayment:${memberId}:${paymentData.amount}:${paymentData.paymentType}:1`;
+    const reference = paymentData.transactionReference ||
+        localStorage.getItem(storageKey) || localStorage.getItem(previousKey) || `GYM-CASHIER-${crypto.randomUUID()}`;
+    localStorage.setItem(storageKey, reference);
+
+    const response = await axios.post(`${MEMBERS_API_URL}${memberId}/payments/`, {
+        ...paymentData,
+        transactionReference: reference,
+    }, {
+        headers: { Authorization: `Bearer ${getToken()}` },
+    });
+
+    if (localStorage.getItem(storageKey) === reference) {
+        localStorage.removeItem(storageKey);
     }
+    if (localStorage.getItem(previousKey) === reference) localStorage.removeItem(previousKey);
+    return response.data;
 }

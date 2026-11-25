@@ -26,3 +26,10 @@ export const getPayments = async (startDate: string, endDate: string) => {
         throw error;
     }
 }
+
+export async function downloadPaymentReceipt(id: string, dayPass: boolean) {
+    const response = await axios.get<Blob>(`${PAYMENTS_API_URL}${id}/receipt`, {
+        params: { dayPass }, headers: { Authorization: `Bearer ${getToken()}` }, responseType: "blob",
+    });
+    return response.data;
+}

@@ -1,3 +1,5 @@
+import PaymentReceiptField from "@/components/payment-receipt-field";
+import { encodeReceipt } from "@/services/receipt-file";
 import { createPortal } from "react-dom";
 import { useEffect, useState } from "react";
 import {
@@ -230,7 +232,9 @@ export default function Trainers() {
   const [selectedTrainerDetails, setSelectedTrainerDetails] =
     useState<TrainerDetails | null>(null);
   const [isPayModalOpen, setIsPayModalOpen] = useState(false);
-  const [paymentMethod, setPaymentMethod] = useState<"cash" | "card">("cash");
+  const [paymentMethod, setPaymentMethod] = useState<"cash" | "card" | "receipt">("cash");
+  const [paymentReceipt, setPaymentReceipt] = useState<File>();
+  const [planReceipt, setPlanReceipt] = useState<File>();
   const [paymentRemark, setPaymentRemark] = useState("");
   const [payLoading, setPayLoading] = useState(false);
   const [isFingerprintModalOpen, setIsFingerprintModalOpen] = useState(false);
@@ -253,7 +257,7 @@ export default function Trainers() {
   const [membershipTrainerId, setMembershipTrainerId] = useState<string | null>(null);
   const [membershipTrainerDetails, setMembershipTrainerDetails] = useState<TrainerDetails | null>(null);
   const [membershipPlanId, setMembershipPlanId] = useState("");
-  const [membershipPaymentMethod, setMembershipPaymentMethod] = useState<"cash" | "card">("cash");
+  const [membershipPaymentMethod, setMembershipPaymentMethod] = useState<"cash" | "card" | "receipt">("cash");
   const [isSavingMembershipChange, setIsSavingMembershipChange] = useState(false);
   const [membershipChangeError, setMembershipChangeError] = useState("");
 
@@ -496,6 +500,7 @@ export default function Trainers() {
   ] as const;
 
   const openNewTrainerModal = () => {
+    setPaymentReceipt(undefined);
     setForm(initialTrainerForm);
     setFieldErrors({});
     setSubmitError("");
@@ -678,6 +683,7 @@ export default function Trainers() {
     setIsPayModalOpen(false);
     setIsFingerprintModalOpen(false);
     setPaymentMethod("cash");
+    setPaymentReceipt(undefined);
     setPaymentRemark("");
     setFingerprintId1("DUMMY_FINGERPRINT_1");
     setFingerprintId2("DUMMY_FINGERPRINT_2");
@@ -687,6 +693,7 @@ export default function Trainers() {
     if (!selectedTrainerDetails) return;
 
     setPaymentMethod("cash");
+    setPaymentReceipt(undefined);
     setPaymentRemark("");
     setIsPayModalOpen(true);
   };
@@ -694,6 +701,7 @@ export default function Trainers() {
   const closePaymentModal = () => {
     setIsPayModalOpen(false);
     setPaymentMethod("cash");
+    setPaymentReceipt(undefined);
     setPaymentRemark("");
   };
 
@@ -792,6 +800,7 @@ export default function Trainers() {
     setMembershipTrainerId(trainerId);
     setMembershipTrainerDetails(null);
     setMembershipPlanId("");
+    setPlanReceipt(undefined);
     setMembershipPaymentMethod("cash");
     setMembershipChangeError("");
     setIsSavingMembershipChange(false);
@@ -818,6 +827,7 @@ export default function Trainers() {
     setMembershipTrainerId(null);
     setMembershipTrainerDetails(null);
     setMembershipPlanId("");
+    setPlanReceipt(undefined);
     setMembershipPaymentMethod("cash");
     setMembershipChangeError("");
     setIsSavingMembershipChange(false);
@@ -838,7 +848,8 @@ export default function Trainers() {
     try {
       await updateMembershipPlan(membershipTrainerId, {
         membershipPlanId,
-        paymentType: membershipPaymentMethod === "cash" ? 1 : 2,
+        paymentType: membershipPaymentMethod === "receipt" ? 6 : membershipPaymentMethod === "cash" ? 1 : 2,
+        receipt: membershipPaymentMethod === "receipt" ? await encodeReceipt(planReceipt, true) : undefined,
       });
 
       setPageAlert({
@@ -987,7 +998,7 @@ export default function Trainers() {
     if (!selectedTrainerDetails) return;
 
     const amount = Number(selectedTrainerDetails.membershipPlanPrice || 0);
-    const methodLabel = paymentMethod === "card" ? "Card" : "Cash";
+    const methodLabel = paymentMethod === "receipt" ? "Receipt upload" : paymentMethod === "card" ? "Card" : "Cash";
     const confirmMessage =
       `Confirm payment of LKR ${amount.toLocaleString()} via ${methodLabel}?` +
       (paymentRemark.trim() ? `\n\nRemark: ${paymentRemark.trim()}` : "");
@@ -996,14 +1007,14 @@ export default function Trainers() {
 
     const paymentData: any = {
       amount,
-      paymentType: paymentMethod === "cash" ? 1 : 2,
-      paymentStatus: 1,
+      paymentType: paymentMethod === "receipt" ? 6 : paymentMethod === "cash" ? 1 : 2,
+      paymentStatus: 2,
       transactionReference: null,
     };
 
     setPayLoading(true);
     try {
-      await processPayment(paymentData, selectedTrainerDetails.id);
+      await processPayment({ ...paymentData, receipt: paymentMethod === "receipt" ? await encodeReceipt(paymentReceipt, true) : undefined }, selectedTrainerDetails.id);
 
       setPageAlert({
         visible: true,
@@ -1796,10 +1807,15 @@ export default function Trainers() {
                           />
                           Card
                         </label>
+                        <label className="inline-flex cursor-pointer items-center gap-2 rounded-xl border border-gray-200 px-4 py-3 text-sm text-gray-700">
+                          <input type="radio" name="regPaymentMethod" value="receipt" checked={paymentMethod === "receipt"} onChange={() => setPaymentMethod("receipt")} />
+                          Receipt upload
+                        </label>
                       </div>
                     </div>
 
                     <div>
+                      {paymentMethod === "receipt" && <PaymentReceiptField file={paymentReceipt} onChange={setPaymentReceipt} required disabled={payLoading} />}
                       <label className="mb-2 block text-sm font-medium text-gray-900">
                         Remark{" "}
                         <span className="text-gray-400 font-normal">
@@ -1849,7 +1865,7 @@ export default function Trainers() {
                               selectedMembershipPlan?.price || 0,
                             );
                             const confirmMsg =
-                              `Confirm payment of LKR ${amt.toLocaleString()} via ${paymentMethod === "card" ? "Card" : "Cash"}?` +
+                              `Confirm payment of LKR ${amt.toLocaleString()} via ${paymentMethod === "receipt" ? "Receipt upload" : paymentMethod === "card" ? "Card" : "Cash"}?` +
                               (paymentRemark.trim()
                                 ? `\n\nRemark: ${paymentRemark.trim()}`
                                 : "");
@@ -1860,10 +1876,11 @@ export default function Trainers() {
                               await processPayment(
                                 {
                                   amount: amt,
-                                  paymentType: paymentMethod === "cash" ? 1 : 2,
-                                  paymentStatus: 1,
+                                  paymentType: paymentMethod === "receipt" ? 6 : paymentMethod === "cash" ? 1 : 2,
+                                  paymentStatus: 2,
                                   transactionReference: null,
                                   startDate: new Date().toISOString(),
+                                  receipt: paymentMethod === "receipt" ? await encodeReceipt(paymentReceipt, true) : undefined,
                                 },
                                 registeredTrainerId,
                               );
@@ -2360,10 +2377,15 @@ export default function Trainers() {
                         />
                         Card
                       </label>
+                      <label className="inline-flex cursor-pointer items-center gap-2 rounded-xl border border-gray-200 px-4 py-3 text-sm text-gray-700">
+                        <input type="radio" name="paymentMethod" value="receipt" checked={paymentMethod === "receipt"} onChange={() => setPaymentMethod("receipt")} />
+                        Receipt upload
+                      </label>
                     </div>
                   </div>
 
                   <div>
+                    {paymentMethod === "receipt" && <PaymentReceiptField file={paymentReceipt} onChange={setPaymentReceipt} required disabled={payLoading} />}
                     <label className="mb-2 block text-sm font-medium text-gray-900">
                       Remark{" "}
                       <span className="text-gray-400 font-normal">
@@ -2753,10 +2775,15 @@ export default function Trainers() {
                           <input type="radio" name="trainerMembershipPaymentMethod" value="card" checked={membershipPaymentMethod === "card"} onChange={() => setMembershipPaymentMethod("card")} />
                           Card
                         </label>
+                        <label className="inline-flex cursor-pointer items-center gap-2 rounded-xl border border-gray-200 px-4 py-3 text-sm text-gray-700">
+                          <input type="radio" name="trainerMembershipPaymentMethod" value="receipt" checked={membershipPaymentMethod === "receipt"} onChange={() => setMembershipPaymentMethod("receipt")} />
+                          Receipt upload
+                        </label>
                       </div>
                     </div>
 
                     {membershipChangeError ? <p className="text-sm text-red-600">{membershipChangeError}</p> : null}
+                    {membershipPaymentMethod === "receipt" && <PaymentReceiptField file={planReceipt} onChange={setPlanReceipt} required disabled={isSavingMembershipChange} />}
                     <div className="flex items-center justify-end gap-3 border-t border-gray-200 pt-4">
                       <button onClick={closeMembershipModal} className="rounded-lg border border-gray-200 px-4 py-2 text-sm font-medium text-gray-700 transition hover:bg-gray-50 cursor-pointer">Cancel</button>
                       <button onClick={handleSaveMembershipChange} disabled={isSavingMembershipChange || !membershipPlanId} className="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-5 py-2 text-sm font-medium text-white transition hover:bg-blue-700 cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed">
