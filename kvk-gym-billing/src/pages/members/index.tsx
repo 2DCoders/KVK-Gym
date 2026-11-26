@@ -1,3 +1,4 @@
+import { usePaymentReceipt } from "@/components/use-payment-receipt";
 import PaymentReceiptField from "@/components/payment-receipt-field";
 import { encodeReceipt } from "@/services/receipt-file";
 import { createPortal } from 'react-dom';
@@ -235,6 +236,7 @@ export default function Members() {
   const [fieldErrors, setFieldErrors] = useState<MemberFieldErrors>({});
   const [submitError, setSubmitError] = useState('');
   const [isRegistering, setIsRegistering] = useState(false);
+  const { previewPayment, receiptPreview } = usePaymentReceipt();
   const [pageAlert, setPageAlert] = useState<{ visible: boolean; variant?: 'success' | 'error' | 'warning' | 'info'; title?: string; description?: string }>({ visible: false });
   const [isViewMemberOpen, setIsViewMemberOpen] = useState(false);
   const [isLoadingMemberDetails, setIsLoadingMemberDetails] = useState(false);
@@ -934,7 +936,8 @@ export default function Members() {
         receipt: membershipPaymentMethod === "receipt" ? await encodeReceipt(planReceipt, true) : undefined,
       } as any;
 
-      await updateMembershipPlan(membershipMemberId, payload);
+      const result = await updateMembershipPlan(membershipMemberId, payload);
+      previewPayment(result.additionalData?.payment, membershipPaymentMethod);
 
       setPageAlert({
         visible: true,
@@ -1034,7 +1037,8 @@ export default function Members() {
 
     setPayLoading(true);
     try {
-      await processPayment({ ...paymentData, receipt: paymentMethod === "receipt" ? await encodeReceipt(paymentReceipt, true) : undefined }, selectedMemberDetails.id);
+      const result = await processPayment({ ...paymentData, receipt: paymentMethod === "receipt" ? await encodeReceipt(paymentReceipt, true) : undefined }, selectedMemberDetails.id);
+      previewPayment(result.additionalData?.payment, paymentMethod);
 
       setPageAlert({
         visible: true,
@@ -1044,6 +1048,8 @@ export default function Members() {
       });
 
       closePaymentModal();
+
+      void fetchMembers();
 
       // Refresh member details
       try {
@@ -1063,14 +1069,12 @@ export default function Members() {
       });
     } finally {
       setPayLoading(false);
-      setTimeout(() => {
-        window.location.reload(); // Force reload to update payment status in member list, as it is not part of the details response and would require refetching the entire list or updating state manually
-      }, 2000);
     }
   };
 
   return (
     <div className="max-w-7xl mx-auto px-4 py-6">
+      {receiptPreview}
       {pageAlert.visible && (
         <div>
           <Alert variant={pageAlert.variant as any} title={pageAlert.title} description={pageAlert.description} onClose={() => setPageAlert((s) => ({ ...s, visible: false }))} />
@@ -1465,7 +1469,8 @@ export default function Members() {
 
                         setPayLoading(true);
                         try {
-                          await processPayment({ amount: amt, paymentType: paymentMethod === "receipt" ? 6 : paymentMethod === "cash" ? 1 : 2, paymentStatus: 2, transactionReference: null, startDate: new Date().toISOString(), receipt: paymentMethod === "receipt" ? await encodeReceipt(paymentReceipt, true) : undefined }, registeredMemberId);
+                          const result = await processPayment({ amount: amt, paymentType: paymentMethod === "receipt" ? 6 : paymentMethod === "cash" ? 1 : 2, paymentStatus: 2, transactionReference: null, startDate: new Date().toISOString(), receipt: paymentMethod === "receipt" ? await encodeReceipt(paymentReceipt, true) : undefined }, registeredMemberId);
+                          previewPayment(result.additionalData?.payment, paymentMethod);
                           setPageAlert({ visible: true, variant: 'success', title: 'Payment Processed', description: `Payment of LKR ${amt.toLocaleString()} successful.` });
                           try {
                             const detailResp = await getMemberById(registeredMemberId);

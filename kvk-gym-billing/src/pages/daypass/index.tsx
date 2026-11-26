@@ -1,4 +1,6 @@
 import PaymentReceiptField from "@/components/payment-receipt-field";
+import { usePaymentReceipt } from "@/components/use-payment-receipt";
+import { PAID } from "@/services/gym-payment-receipt";
 import { encodeReceipt } from "@/services/receipt-file";
 import Alert from "@/components/ui/alert";
 import {
@@ -20,6 +22,7 @@ export default function Daypass() {
   const [Error, setError] = useState<string | null>(null);
   const [paymentReceipt, setPaymentReceipt] = useState<File>();
   const [isRegistering, setIsRegistering] = useState(false);
+  const { previewPayment, receiptPreview } = usePaymentReceipt();
   const [membershipPlans, setMembershipPlans] = useState<any[]>([]); // Replace with actual membership plan type
   const [isLoadingPlans, setIsLoadingPlans] = useState(false);
   const [pageAlert, setPageAlert] = useState<{
@@ -126,11 +129,23 @@ export default function Daypass() {
 
     try {
       const response = await registerDayPassMember({ ...body, receipt: paymentMethod === "receipt" ? await encodeReceipt(paymentReceipt, true) : undefined });
+      previewPayment(response?.paymentStatus === "Paid" ? {
+        id: response.id,
+        isDayPass: true,
+        memberFirstName: response.name,
+        membershipNumber: response.temporaryMembershipNumber,
+        transactionReference: response.temporaryMembershipNumber,
+        amount: response.amount,
+        paymentType: response.paymentType === "Cash" ? 1 : response.paymentType === "CreditCard" ? 2 : body.paymentType,
+        paymentStatus: PAID,
+        startDate: response.date,
+        createdAt: response.createdAt,
+      } : undefined, paymentMethod);
       setPageAlert({
         visible: true,
         variant: "success",
         title: "Day Pass Registered",
-        description: `Day pass for ${response.name} has been successfully registered.`,
+        description: `Day pass for ${response?.name ?? form.name} has been successfully registered.`,
       });
       setForm({ name: "", phone: "", membershipPlan: "" });
       setFieldErrors({});
@@ -224,6 +239,7 @@ export default function Daypass() {
 
   return (
     <div className="max-w-7xl mx-auto px-4 py-6">
+      {receiptPreview}
       {pageAlert.visible && (
         <div>
           <Alert

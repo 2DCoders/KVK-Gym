@@ -1,4 +1,5 @@
 import axios from "axios";
+import type { GymPaymentResult } from "./gym-payment-receipt";
 import { getEnv } from "@/env";
 
 const { API_URL } = getEnv();
@@ -66,7 +67,7 @@ export const updateMember = async (memberId: string, memberData: any) => {
 
 export const updateMembershipPlan = async (memberId: string, planData: any) => {
   try {
-    const response = await axios.post(`${MEMBERS_API_URL}${memberId}/upgrade/`, planData, {
+    const response = await axios.post<GymPaymentResult>(`${MEMBERS_API_URL}${memberId}/upgrade/`, planData, {
       headers: {
         Authorization: `Bearer ${getToken()}`,
       },

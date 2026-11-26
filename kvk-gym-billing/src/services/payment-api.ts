@@ -1,5 +1,6 @@
 import axios from "axios";
 import { getEnv } from "@/env";
+import type { GymPaymentResult } from "./gym-payment-receipt";
 
 const { API_URL } = getEnv();
 const MEMBERS_API_URL = `${API_URL}gym/members/`;
@@ -29,7 +30,7 @@ export const processPayment = async (paymentData: CashierPayment, memberId: stri
         localStorage.getItem(storageKey) || localStorage.getItem(previousKey) || `GYM-CASHIER-${crypto.randomUUID()}`;
     localStorage.setItem(storageKey, reference);
 
-    const response = await axios.post(`${MEMBERS_API_URL}${memberId}/payments/`, {
+    const response = await axios.post<GymPaymentResult>(`${MEMBERS_API_URL}${memberId}/payments/`, {
         ...paymentData,
         transactionReference: reference,
     }, {
