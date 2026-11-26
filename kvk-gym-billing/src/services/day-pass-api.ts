@@ -12,14 +12,25 @@ const getToken = () => {
   return cashier ? cashier.token : null;
 };
 
+type RegisteredDayPass = {
+  id: string;
+  name: string;
+  temporaryMembershipNumber?: string;
+  paymentType: string;
+  paymentStatus: string;
+  amount: number;
+  date: string;
+  createdAt: string;
+};
+
 export const registerDayPassMember = async (memberData: any) => {
   try {
-    const response = await axios.post(`${DP_MEMBERS_API_URL}`, memberData, {
+    const response = await axios.post<{ additionalData?: { response?: RegisteredDayPass } }>(`${DP_MEMBERS_API_URL}`, memberData, {
       headers: {
         Authorization: `Bearer ${getToken()}`,
       },
     });
-    return response.data;
+    return response.data.additionalData?.response;
   } catch (error) {
     throw error;
   }

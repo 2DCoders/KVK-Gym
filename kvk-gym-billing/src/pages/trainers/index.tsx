@@ -1,4 +1,5 @@
 import PaymentReceiptField from "@/components/payment-receipt-field";
+import { usePaymentReceipt } from "@/components/use-payment-receipt";
 import { encodeReceipt } from "@/services/receipt-file";
 import { createPortal } from "react-dom";
 import { useEffect, useState } from "react";
@@ -220,6 +221,7 @@ export default function Trainers() {
   const [fieldErrors, setFieldErrors] = useState<TrainerFieldErrors>({});
   const [submitError, setSubmitError] = useState("");
   const [isRegistering, setIsRegistering] = useState(false);
+  const { previewPayment, receiptPreview } = usePaymentReceipt();
   const [pageAlert, setPageAlert] = useState<{
     visible: boolean;
     variant?: "success" | "error" | "warning" | "info";
@@ -846,11 +848,12 @@ export default function Trainers() {
     setMembershipChangeError("");
 
     try {
-      await updateMembershipPlan(membershipTrainerId, {
+      const result = await updateMembershipPlan(membershipTrainerId, {
         membershipPlanId,
         paymentType: membershipPaymentMethod === "receipt" ? 6 : membershipPaymentMethod === "cash" ? 1 : 2,
         receipt: membershipPaymentMethod === "receipt" ? await encodeReceipt(planReceipt, true) : undefined,
       });
+      previewPayment(result.additionalData?.payment, membershipPaymentMethod);
 
       setPageAlert({
         visible: true,
@@ -1014,7 +1017,8 @@ export default function Trainers() {
 
     setPayLoading(true);
     try {
-      await processPayment({ ...paymentData, receipt: paymentMethod === "receipt" ? await encodeReceipt(paymentReceipt, true) : undefined }, selectedTrainerDetails.id);
+      const result = await processPayment({ ...paymentData, receipt: paymentMethod === "receipt" ? await encodeReceipt(paymentReceipt, true) : undefined }, selectedTrainerDetails.id);
+      previewPayment(result.additionalData?.payment, paymentMethod);
 
       setPageAlert({
         visible: true,
@@ -1024,6 +1028,7 @@ export default function Trainers() {
       });
 
       closePaymentModal();
+      void fetchTrainers();
 
       try {
         const response = await getMemberById(selectedTrainerDetails.id);
@@ -1051,6 +1056,7 @@ export default function Trainers() {
 
   return (
     <div className="max-w-7xl mx-auto px-4 py-6">
+      {receiptPreview}
       {pageAlert.visible && (
         <div>
           <Alert
@@ -1873,7 +1879,7 @@ export default function Trainers() {
 
                             setPayLoading(true);
                             try {
-                              await processPayment(
+                              const result = await processPayment(
                                 {
                                   amount: amt,
                                   paymentType: paymentMethod === "receipt" ? 6 : paymentMethod === "cash" ? 1 : 2,
@@ -1884,6 +1890,7 @@ export default function Trainers() {
                                 },
                                 registeredTrainerId,
                               );
+                              previewPayment(result.additionalData?.payment, paymentMethod);
                               setPageAlert({
                                 visible: true,
                                 variant: "success",

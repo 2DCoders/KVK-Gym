@@ -13,6 +13,7 @@ import { downloadPaymentReceipt, getPayments } from "@/services/payments-api";
 import { useNavigate } from "react-router-dom";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
+import { createGymPaymentReceipt, gymPaymentMethod, PAID, type GymReceiptPayment } from "@/services/gym-payment-receipt";
 
 type ReceiptPayment = { id: string; member: string; isDayPass: boolean; hasReceipt: boolean };
 
@@ -24,7 +25,7 @@ export default function Payments() {
   const [pageSize, setPageSize] = useState(10);
   const [selectedDate, setSelectedDate] = useState(defaultDate);
   const [searchTerm, setSearchTerm] = useState("");
-  const [payments, setPayments] = useState<any[]>([]);
+  const [payments, setPayments] = useState<(GymReceiptPayment & ReceiptPayment & { date: string; method: string })[]>([]);
   const [isLoadingPayments, setIsLoadingPayments] = useState(false);
   const [paymentsError, setPaymentsError] = useState("");
   const [receiptBusy, setReceiptBusy] = useState("");
@@ -37,6 +38,16 @@ export default function Payments() {
   });
 
   const navigate = useNavigate();
+
+  function downloadGeneratedReceipt(payment: GymReceiptPayment) {
+    setReceiptFeedback(undefined);
+    try {
+      const { doc, filename } = createGymPaymentReceipt(payment);
+      doc.save(filename);
+    } catch {
+      setReceiptFeedback({ error: true, message: "Unable to download the receipt. Please try again." });
+    }
+  }
 
   async function downloadReceipt(payment: ReceiptPayment) {
     const key = `${payment.isDayPass}:${payment.id}`;
@@ -90,7 +101,7 @@ export default function Payments() {
       head: [["Member", "Membership No", "Amount", "Date", "Method"]],
       body: filteredPayments.map((payment) => [
         payment.member,
-        payment.membershipNumber,
+        payment.membershipNumber ?? "",
         formatLkr(payment.amount),
         payment.date?.slice(0, 10),
         payment.method,
@@ -159,8 +170,8 @@ export default function Payments() {
         [];
 
       const mappedPayments = Array.isArray(rows)
-        ? rows.map((payment: any) => ({
-          id: payment.id,
+        ? rows.map((payment: GymReceiptPayment) => ({
+          ...payment,
           isDayPass: !!payment.isDayPass,
           hasReceipt: !!payment.hasReceipt,
           member: `${payment.memberFirstName ?? ""} ${payment.memberLastName ?? ""
@@ -170,17 +181,8 @@ export default function Payments() {
           membershipNumber: payment.membershipNumber ?? "",
           membershipPlanTitle: payment.membershipPlanTitle ?? "",
           amount: Number(payment.amount ?? 0),
-          date: payment.createdAt ?? payment.startDate,
-          method:
-            payment.paymentType === 6 ? "Receipt upload" :
-            payment.paymentType === 1
-              ? "Cash"
-              : payment.paymentType === 2
-                ? "Card"
-                : payment.paymentType === 3
-                  ? "Online"
-                  : "Unknown",
-          paymentStatus: payment.paymentStatus,
+          date: payment.createdAt ?? payment.startDate ?? "",
+          method: gymPaymentMethod(payment.paymentType),
         }))
         : [];
 
@@ -420,11 +422,16 @@ export default function Payments() {
                         </td>
                         <td className="py-2 px-3 align-top">
                           <div className="flex flex-wrap items-center gap-2 whitespace-nowrap">
-                            {!payment.hasReceipt && <span className="text-xs text-gray-400">—</span>}
-                            {payment.hasReceipt && <button type="button" disabled={!!receiptBusy}
-                              aria-label={`Download receipt for ${payment.member}`}
-                              className="rounded-md border border-gray-200 p-1 text-slate-600 hover:bg-slate-100 disabled:opacity-50"
-                              onClick={() => void downloadReceipt(payment)}><Download size={15} /></button>}
+                            {payment.paymentStatus === PAID && (
+                              <button type="button" onClick={() => downloadGeneratedReceipt(payment)}
+                                className="inline-flex items-center gap-1.5 rounded-md border border-gray-200 px-2 py-1 text-xs font-medium text-slate-700 hover:bg-slate-100">
+                                <Download size={15} /> Download receipt
+                              </button>
+                            )}
+                            {payment.paymentStatus === PAID && payment.hasReceipt && <button type="button" disabled={!!receiptBusy}
+                              aria-label={`Download uploaded receipt for ${payment.member}`}
+                              className="inline-flex items-center gap-1.5 rounded-md border border-gray-200 px-2 py-1 text-xs text-slate-600 hover:bg-slate-100 disabled:opacity-50"
+                              onClick={() => void downloadReceipt(payment)}><Download size={15} /> Uploaded receipt</button>}
                           </div>
                         </td>
                       </tr>
