@@ -15,6 +15,8 @@ const getToken = () => {
 
 type CashierPayment = {
     amount: number;
+    trainerDiscount?: number;
+    trainerRegistrationDiscount?: number;
     paymentType: number;
     paymentStatus: number;
     transactionReference?: string | null;
