@@ -4,7 +4,6 @@ import { encodeReceipt } from "@/services/receipt-file";
 import { createPortal } from "react-dom";
 import { useEffect, useState } from "react";
 import {
-  ArrowLeft,
   ArrowRight,
   CreditCard,
   Fingerprint,
@@ -70,7 +69,8 @@ type TrainerDetails = {
   dateOfBirth: string;
   gender: number;
   membershipStatus: string;
-  membershipPlanId: string;
+  membershipPlanId: string | null;
+  isFreelance: boolean;
   membershipPlanTitle: string;
   membershipPlanPrice: number;
   membershipStartDate: string;
@@ -89,6 +89,8 @@ type TrainerForm = {
   phone: string;
   email: string;
   membershipPlan: string;
+  trainerType: "gym" | "freelancer";
+  access: "membership" | "free";
 };
 
 type TrainerRegistrationPayload = {
@@ -98,7 +100,8 @@ type TrainerRegistrationPayload = {
   phone: string | null;
   dateOfBirth: string;
   memberType: number;
-  MembershipPlanId: string;
+  MembershipPlanId: string | null;
+  isFreelance: boolean;
   gender: number;
   password: string;
   deviceFingerprintId1: string | null;
@@ -113,7 +116,7 @@ type MembershipPlan = {
 
 type TrainerFieldErrors = Partial<Record<keyof TrainerForm, string>>;
 
-type TrainerEditForm = TrainerForm;
+type TrainerEditForm = Omit<TrainerForm, "access">;
 
 const TRAINER_PREFIX = "GYM-TRA";
 const sriLankanMobileRegex = /^7\d{8}$/;
@@ -160,7 +163,7 @@ const validateDateOfBirth = (dateOfBirth: string): string | undefined => {
   return undefined;
 };
 
-const validateTrainerForm = (form: TrainerForm): TrainerFieldErrors => {
+const validateTrainerForm = (form: TrainerEditForm): TrainerFieldErrors => {
   const errors: TrainerFieldErrors = {};
 
   if (!form.firstName.trim()) {
@@ -184,10 +187,6 @@ const validateTrainerForm = (form: TrainerForm): TrainerFieldErrors => {
     errors.email = "Enter a valid email address.";
   }
 
-  if (!form.membershipPlan) {
-    errors.membershipPlan = "Select a membership plan.";
-  }
-
   return errors;
 };
 
@@ -199,9 +198,98 @@ const initialTrainerForm: TrainerForm = {
   phone: "",
   email: "",
   membershipPlan: "",
+  trainerType: "gym",
+  access: "membership",
 };
 
-const initialTrainerEditForm: TrainerEditForm = { ...initialTrainerForm };
+const initialTrainerEditForm: TrainerEditForm = initialTrainerForm;
+
+function TrainerTypeField({ name, value, onChange }: {
+  name: string;
+  value: TrainerForm["trainerType"];
+  onChange: (type: TrainerForm["trainerType"]) => void;
+}) {
+  return (
+    <fieldset className="min-w-0">
+      <legend className="mb-2 text-xs font-medium text-gray-900 sm:text-sm">Trainer type</legend>
+      <div className="grid grid-cols-2 gap-2">
+        {(["gym", "freelancer"] as const).map((trainerType) => (
+          <label
+            key={trainerType}
+            className="flex h-11 cursor-pointer items-center gap-2 rounded-lg border border-gray-200 px-3 text-xs font-medium text-gray-700 has-checked:border-blue-500 has-checked:bg-blue-50 has-checked:text-blue-800 sm:text-sm"
+          >
+            <input
+              type="radio"
+              name={name}
+              value={trainerType}
+              checked={value === trainerType}
+              onChange={() => onChange(trainerType)}
+              className="shrink-0 accent-blue-600"
+            />
+            {trainerType === "gym" ? "Gym Trainer" : "Freelancer"}
+          </label>
+        ))}
+      </div>
+    </fieldset>
+  );
+}
+
+function getPaymentTotal(price: number, value: string) {
+  const discount = Number(value);
+  const isValid = /^(?:\d+(?:\.\d{0,2})?|\.\d{1,2})?$/.test(value) &&
+    (discount === 0 || discount < price);
+  const total = (Math.round(price * 100) - Math.round(discount * 100)) / 100;
+  return { discount, isValid, total };
+}
+
+const formatAmount = (amount: number) =>
+  amount.toLocaleString("en-LK", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+function TrainerPaymentTotals({ id, price, value, onChange, disabled }: {
+  id: string;
+  price: number;
+  value: string;
+  onChange: (value: string) => void;
+  disabled: boolean;
+}) {
+  const { isValid, total } = getPaymentTotal(price, value);
+  return (
+    <div className="rounded-2xl border border-gray-200 bg-gray-50 px-4 py-4">
+      <div className="flex items-center justify-between gap-4">
+        <span className="text-sm font-medium text-gray-600">
+          Price
+        </span>
+        <span className="text-base font-semibold text-gray-900">
+          LKR {formatAmount(price)}
+        </span>
+      </div>
+      <label className="mt-4 block text-sm font-medium text-gray-900">
+        Discount (LKR)
+        <input
+          type="number"
+          min="0"
+          max={Math.max(0, price - 0.01)}
+          step="0.01"
+          value={value}
+          onChange={(event) => onChange(event.target.value)}
+          aria-invalid={!isValid}
+          aria-describedby={isValid ? undefined : `${id}-error`}
+          disabled={disabled}
+          className="mt-2 w-full rounded-lg border border-gray-200 px-4 py-2.5"
+        />
+      </label>
+      {!isValid && (
+        <p id={`${id}-error`} className="mt-2 text-sm text-red-600">
+          Enter a non-negative amount below the plan price, with up to two decimal places.
+        </p>
+      )}
+      <div className="mt-4 flex items-center justify-between gap-4 border-t border-gray-200 pt-4 text-sm font-semibold" aria-live="polite">
+        <span>Final payment</span>
+        <span>{isValid ? `LKR ${formatAmount(total)}` : "—"}</span>
+      </div>
+    </div>
+  );
+}
 
 export default function Trainers() {
   const [trainers, setTrainers] = useState<TableTrainer[]>([]);
@@ -214,6 +302,9 @@ export default function Trainers() {
   const [activeTab, setActiveTab] = useState<TrainerStatus>("approved");
   const [isNewTrainerOpen, setIsNewTrainerOpen] = useState(false);
   const [trainerStep, setTrainerStep] = useState(1);
+  const [registrationDiscount, setRegistrationDiscount] = useState("");
+  const [paymentDiscount, setPaymentDiscount] = useState("");
+  const [membershipDiscount, setMembershipDiscount] = useState("");
   const [registeredTrainerId, setRegisteredTrainerId] = useState<string | null>(
     null,
   );
@@ -481,9 +572,15 @@ export default function Trainers() {
   const selectedMembershipPlan = membershipPlans.find(
     (plan) => plan.id === form.membershipPlan,
   );
+  const isFreeRegistration = form.trainerType === "gym" && form.access === "free";
+  const registrationPrice = selectedMembershipPlan?.price ?? 0;
+  const registrationPayment = getPaymentTotal(registrationPrice, registrationDiscount);
+  const paymentPrice = selectedTrainerDetails?.membershipPlanPrice ?? 0;
+  const trainerPayment = getPaymentTotal(paymentPrice, paymentDiscount);
   const selectedMembershipChangePlan = membershipPlans.find(
     (plan) => plan.id === membershipPlanId,
   );
+  const membershipPayment = getPaymentTotal(selectedMembershipChangePlan?.price ?? 0, membershipDiscount);
 
   // Keep Delete available until onboarding is FULLY complete — payment done
   // AND fingerprint enrolled. Previously this required BOTH "still unpaid"
@@ -502,6 +599,10 @@ export default function Trainers() {
   ] as const;
 
   const openNewTrainerModal = () => {
+    setRegisteredTrainerId(null);
+    setRegistrationDiscount("");
+    setPaymentRemark("");
+    setPaymentMethod("cash");
     setPaymentReceipt(undefined);
     setForm(initialTrainerForm);
     setFieldErrors({});
@@ -541,7 +642,8 @@ export default function Trainers() {
     })(form.dateOfBirth),
     memberType: 2,
     password: form.firstName.trim(),
-    MembershipPlanId: form.membershipPlan,
+    MembershipPlanId: isFreeRegistration ? null : form.membershipPlan,
+    isFreelance: form.trainerType === "freelancer",
     gender: form.gender === "Female" ? 2 : 1,
     deviceFingerprintId1: null,
     deviceFingerprintId2: null,
@@ -549,6 +651,9 @@ export default function Trainers() {
 
   const goToNextStep = async () => {
     const validationErrors = validateTrainerForm(form);
+    if (!isFreeRegistration && !selectedMembershipPlan) {
+      validationErrors.membershipPlan = "Select a membership plan.";
+    }
     setFieldErrors(validationErrors);
 
     if (Object.keys(validationErrors).length > 0) {
@@ -586,7 +691,7 @@ export default function Trainers() {
         }
       }
 
-      setTrainerStep(2);
+      setTrainerStep(isFreeRegistration ? 3 : 2);
       setSearchTerm("");
     } catch (error: any) {
       setPageAlert({
@@ -594,7 +699,7 @@ export default function Trainers() {
         variant: "error",
         title: "Registration Failed",
         description:
-          error.response.data.message ||
+          error?.response?.data?.message ||
           "An error occurred while registering the trainer. Please try again.",
       });
     } finally {
@@ -602,8 +707,6 @@ export default function Trainers() {
       fetchTrainers();
     }
   };
-
-  const goBackStep = () => setTrainerStep(1);
 
   const handleFinalSubmit = async () => {
     if (!registeredTrainerId) {
@@ -692,7 +795,9 @@ export default function Trainers() {
   };
 
   const openPaymentModal = () => {
-    if (!selectedTrainerDetails) return;
+    if (!selectedTrainerDetails?.membershipPlanId) return;
+
+    setPaymentDiscount("");
 
     setPaymentMethod("cash");
     setPaymentReceipt(undefined);
@@ -775,6 +880,7 @@ export default function Trainers() {
         phone: trainerDetails.phoneNumber ?? "",
         email: trainerDetails.email ?? "",
         membershipPlan: trainerDetails.membershipPlanId ?? "",
+        trainerType: trainerDetails.isFreelance ? "freelancer" : "gym",
       });
     } catch {
       setEditTrainerError("Failed to load trainer details. Please try again.");
@@ -800,6 +906,7 @@ export default function Trainers() {
     setOpenAction(null);
     setIsMembershipModalOpen(true);
     setMembershipTrainerId(trainerId);
+    setMembershipDiscount("");
     setMembershipTrainerDetails(null);
     setMembershipPlanId("");
     setPlanReceipt(undefined);
@@ -844,12 +951,15 @@ export default function Trainers() {
       return;
     }
 
+    if (!membershipPayment.isValid) return;
+
     setIsSavingMembershipChange(true);
     setMembershipChangeError("");
 
     try {
       const result = await updateMembershipPlan(membershipTrainerId, {
         membershipPlanId,
+        trainerDiscount: membershipPayment.discount,
         paymentType: membershipPaymentMethod === "receipt" ? 6 : membershipPaymentMethod === "cash" ? 1 : 2,
         receipt: membershipPaymentMethod === "receipt" ? await encodeReceipt(planReceipt, true) : undefined,
       });
@@ -896,7 +1006,7 @@ export default function Trainers() {
       return new Date(Date.UTC(y, mo - 1, day)).toISOString();
     })(editForm.dateOfBirth),
     memberType: 2,
-    MembershipPlanId: editForm.membershipPlan,
+    isFreelance: editForm.trainerType === "freelancer",
     gender: editForm.gender === "Female" ? 2 : 1,
     deviceFingerprintId1: null,
     deviceFingerprintId2: null,
@@ -998,9 +1108,9 @@ export default function Trainers() {
   };
 
   const handleSavePayment = async () => {
-    if (!selectedTrainerDetails) return;
+    if (!selectedTrainerDetails?.membershipPlanId || !trainerPayment.isValid) return;
 
-    const amount = Number(selectedTrainerDetails.membershipPlanPrice || 0);
+    const amount = trainerPayment.total;
     const methodLabel = paymentMethod === "receipt" ? "Receipt upload" : paymentMethod === "card" ? "Card" : "Cash";
     const confirmMessage =
       `Confirm payment of LKR ${amount.toLocaleString()} via ${methodLabel}?` +
@@ -1010,6 +1120,7 @@ export default function Trainers() {
 
     const paymentData: any = {
       amount,
+      trainerDiscount: trainerPayment.discount,
       paymentType: paymentMethod === "receipt" ? 6 : paymentMethod === "cash" ? 1 : 2,
       paymentStatus: 2,
       transactionReference: null,
@@ -1503,7 +1614,7 @@ export default function Trainers() {
               </div>
 
               <div className="border-b border-gray-200 px-5 py-4 sm:px-6">
-                <div className="mx-auto grid w-full max-w-xl grid-cols-[1fr_auto_1fr_auto_1fr] items-center">
+                <div className={`mx-auto grid w-full max-w-xl items-center ${isFreeRegistration ? "grid-cols-[1fr_auto_1fr]" : "grid-cols-[1fr_auto_1fr_auto_1fr]"}`}>
                   <div className="flex items-center justify-end pr-4 sm:pr-6">
                     <div className="flex flex-col items-center gap-2 text-center shrink-0">
                       <div
@@ -1519,22 +1630,26 @@ export default function Trainers() {
                     </div>
                   </div>
 
-                  <div className="h-px w-16 bg-gray-200 sm:w-20 md:w-24" />
+                  {!isFreeRegistration && (
+                    <>
+                      <div className="h-px w-16 bg-gray-200 sm:w-20 md:w-24" />
 
-                  <div className="flex items-center justify-center">
-                    <div className="flex flex-col items-center gap-2 text-center shrink-0">
-                      <div
-                        className={`flex h-10 w-10 items-center justify-center rounded-full border text-sm font-semibold ${trainerStep >= 2 ? "border-blue-500 bg-blue-50 text-blue-600" : "border-gray-200 bg-white text-gray-400"}`}
-                      >
-                        2
+                      <div className="flex items-center justify-center">
+                        <div className="flex flex-col items-center gap-2 text-center shrink-0">
+                          <div
+                            className={`flex h-10 w-10 items-center justify-center rounded-full border text-sm font-semibold ${trainerStep >= 2 ? "border-blue-500 bg-blue-50 text-blue-600" : "border-gray-200 bg-white text-gray-400"}`}
+                          >
+                            2
+                          </div>
+                          <span
+                            className={`text-xs font-medium sm:text-sm ${trainerStep >= 2 ? "text-blue-600" : "text-gray-500"}`}
+                          >
+                            Payment
+                          </span>
+                        </div>
                       </div>
-                      <span
-                        className={`text-xs font-medium sm:text-sm ${trainerStep >= 2 ? "text-blue-600" : "text-gray-500"}`}
-                      >
-                        Payment
-                      </span>
-                    </div>
-                  </div>
+                    </>
+                  )}
 
                   <div className="h-px w-16 bg-gray-200 sm:w-20 md:w-24" />
 
@@ -1543,7 +1658,7 @@ export default function Trainers() {
                       <div
                         className={`flex h-10 w-10 items-center justify-center rounded-full border text-sm font-semibold ${trainerStep >= 3 ? "border-blue-500 bg-blue-50 text-blue-600" : "border-gray-200 bg-white text-gray-400"}`}
                       >
-                        3
+                        {isFreeRegistration ? 2 : 3}
                       </div>
                       <span
                         className={`text-xs font-medium sm:text-sm ${trainerStep >= 3 ? "text-blue-600" : "text-gray-500"}`}
@@ -1691,23 +1806,33 @@ export default function Trainers() {
                           {fieldErrors.email ?? "Use a valid email address."}
                         </p>
                       </div>
+                      <TrainerTypeField
+                        name="trainerType"
+                        value={form.trainerType}
+                        onChange={(trainerType) => setForm((current) => ({
+                          ...current,
+                          trainerType,
+                          access: trainerType === "freelancer" ? "membership" : current.access,
+                        }))}
+                      />
                       <div>
-                        <label className="mb-2 block text-xs font-medium text-gray-900 sm:text-sm">
+                        <label htmlFor="trainer-registration-plan" className="mb-2 block text-xs font-medium text-gray-900 sm:text-sm">
                           Membership Plan{" "}
-                          <span className="text-red-500">*</span>
+                          {!isFreeRegistration && <span className="text-red-500">*</span>}
                         </label>
                         <select
-                          value={form.membershipPlan}
+                          id="trainer-registration-plan"
+                          value={isFreeRegistration ? "" : form.membershipPlan}
                           onChange={(event) =>
                             updateField("membershipPlan", event.target.value)
                           }
                           disabled={
-                            isLoadingPlans || membershipPlans.length === 0
+                            isFreeRegistration || isLoadingPlans || membershipPlans.length === 0
                           }
-                          className="w-full rounded-lg border border-gray-200 px-4 py-2.5 text-sm outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100 disabled:bg-gray-100"
+                          className="h-11 w-full rounded-lg border border-gray-200 px-3 text-sm outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100 disabled:bg-gray-50 disabled:text-gray-500"
                         >
                           <option value="">
-                            {isLoadingPlans
+                            {isFreeRegistration ? "No plan required" : isLoadingPlans
                               ? "Loading plans..."
                               : "Select a plan"}
                           </option>
@@ -1719,17 +1844,34 @@ export default function Trainers() {
                               </option>
                             ))}
                         </select>
-                        {plansError ? (
+                        {!isFreeRegistration && plansError ? (
                           <p className="mt-2 text-[11px] text-red-600 sm:text-xs">
                             {plansError}
                           </p>
                         ) : null}
-                        {fieldErrors.membershipPlan ? (
+                        {!isFreeRegistration && fieldErrors.membershipPlan ? (
                           <p className="mt-2 text-[11px] text-red-600 sm:text-xs">
                             {fieldErrors.membershipPlan}
                           </p>
                         ) : null}
                       </div>
+                      {form.trainerType === "gym" && (
+                        <label className="flex cursor-pointer items-start gap-3 rounded-lg border border-gray-200 bg-gray-50 p-3 md:col-span-2">
+                          <input
+                            type="checkbox"
+                            checked={isFreeRegistration}
+                            onChange={(event) => {
+                              const access = event.target.checked ? "free" : "membership";
+                              setForm((current) => ({ ...current, access }));
+                            }}
+                            className="mt-1 shrink-0 accent-blue-600"
+                          />
+                          <span>
+                            <span className="block text-sm font-medium text-gray-900">Free to play</span>
+                            <span className="mt-0.5 block text-xs text-gray-600">Skip the membership plan and payment.</span>
+                          </span>
+                        </label>
+                      )}
                     </div>
 
                     <div className="flex items-center justify-end gap-3 border-t border-gray-200 pt-4 mb-5.5">
@@ -1774,19 +1916,8 @@ export default function Trainers() {
                       </div>
                     </div>
 
-                    <div className="rounded-2xl border border-gray-200 bg-gray-50 px-4 py-4">
-                      <div className="flex items-center justify-between gap-4">
-                        <span className="text-sm font-medium text-gray-600">
-                          Price
-                        </span>
-                        <span className="text-base font-semibold text-gray-900">
-                          LKR{" "}
-                          {Number(
-                            selectedMembershipPlan?.price || 0,
-                          ).toLocaleString()}
-                        </span>
-                      </div>
-                    </div>
+                    <TrainerPaymentTotals id="trainer-registration-discount" price={registrationPrice}
+                      value={registrationDiscount} onChange={setRegistrationDiscount} disabled={payLoading} />
 
                     <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
                       <label className="mb-3 block text-sm font-medium text-gray-900">
@@ -1839,14 +1970,7 @@ export default function Trainers() {
                       />
                     </div>
 
-                    <div className="flex items-center justify-between border-t border-gray-200 pt-4 mb-5.5">
-                      <button
-                        onClick={() => setTrainerStep(1)}
-                        className="inline-flex cursor-pointer items-center gap-2 rounded-lg border border-gray-200 px-4 py-2.5 text-sm font-medium text-gray-700 transition hover:bg-gray-50"
-                      >
-                        <ArrowLeft size={16} />
-                        Back
-                      </button>
+                    <div className="flex items-center justify-end border-t border-gray-200 pt-4 mb-5.5">
                       <div className="flex items-center gap-3">
                         <button
                           onClick={closeNewTrainerModal}
@@ -1867,9 +1991,8 @@ export default function Trainers() {
                               return;
                             }
 
-                            const amt = Number(
-                              selectedMembershipPlan?.price || 0,
-                            );
+                            if (!registrationPayment.isValid) return;
+                            const amt = registrationPayment.total;
                             const confirmMsg =
                               `Confirm payment of LKR ${amt.toLocaleString()} via ${paymentMethod === "receipt" ? "Receipt upload" : paymentMethod === "card" ? "Card" : "Cash"}?` +
                               (paymentRemark.trim()
@@ -1882,9 +2005,10 @@ export default function Trainers() {
                               const result = await processPayment(
                                 {
                                   amount: amt,
+                                  trainerRegistrationDiscount: registrationPayment.discount,
                                   paymentType: paymentMethod === "receipt" ? 6 : paymentMethod === "cash" ? 1 : 2,
                                   paymentStatus: 2,
-                                  transactionReference: null,
+                                  transactionReference: `GYM-CASHIER-${registeredTrainerId}`,
                                   startDate: new Date().toISOString(),
                                   receipt: paymentMethod === "receipt" ? await encodeReceipt(paymentReceipt, true) : undefined,
                                 },
@@ -1925,7 +2049,7 @@ export default function Trainers() {
                               setPayLoading(false);
                             }
                           }}
-                          disabled={payLoading}
+                          disabled={payLoading || !registrationPayment.isValid}
                           className="inline-flex cursor-pointer items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-blue-700 disabled:opacity-60 disabled:cursor-not-allowed"
                         >
                           {payLoading ? (
@@ -2067,14 +2191,7 @@ export default function Trainers() {
                       </div>
                     </div>
 
-                    <div className="flex items-center justify-between border-t border-gray-200 pt-4 mb-5.5">
-                      <button
-                        onClick={goBackStep}
-                        className="inline-flex items-center cursor-pointer gap-2 rounded-lg border border-gray-200 px-4 py-2.5 text-sm font-medium text-gray-700 transition hover:bg-gray-50"
-                      >
-                        <ArrowLeft size={16} />
-                        Back
-                      </button>
+                    <div className="flex items-center justify-end border-t border-gray-200 pt-4 mb-5.5">
                       <div className="flex items-center gap-3">
                         <button
                           onClick={closeNewTrainerModal}
@@ -2217,9 +2334,15 @@ export default function Trainers() {
                             </span>
                           </div>
                           <div className="flex items-center justify-between gap-4">
+                            <span>Trainer type</span>
+                            <span className="font-medium text-gray-900">
+                              {selectedTrainerDetails.isFreelance ? "Freelancer" : "Gym Trainer"}
+                            </span>
+                          </div>
+                          <div className="flex items-center justify-between gap-4">
                             <span>Plan</span>
                             <span className="font-medium text-gray-900">
-                              {selectedTrainerDetails.membershipPlanTitle}
+                              {selectedTrainerDetails.membershipPlanTitle ?? "Free to play"}
                             </span>
                           </div>
                           <div className="flex items-center justify-between gap-4">
@@ -2270,9 +2393,9 @@ export default function Trainers() {
                                       : "bg-gray-100 text-gray-700"
                                 }`}
                             >
-                              {paymentStatusLabel(
-                                selectedTrainerDetails.paymentStatus,
-                              )}
+                              {selectedTrainerDetails.membershipPlanId
+                                ? paymentStatusLabel(selectedTrainerDetails.paymentStatus)
+                                : "No payment required"}
                             </span>
                           </div>
                           <div className="flex items-center justify-between gap-4">
@@ -2290,15 +2413,17 @@ export default function Trainers() {
                     </div>
 
                     <div className="flex flex-wrap items-center justify-end gap-3 border-t border-gray-200 pt-4">
-                      <button
-                        onClick={openPaymentModal}
-                        className="inline-flex cursor-pointer items-center gap-2 rounded-lg bg-emerald-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-emerald-700"
-                      >
-                        <CreditCard size={16} />
-                        Pay
-                      </button>
+                      {selectedTrainerDetails.membershipPlanId && (
+                        <button
+                          onClick={openPaymentModal}
+                          className="inline-flex cursor-pointer items-center gap-2 rounded-lg bg-emerald-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-emerald-700"
+                        >
+                          <CreditCard size={16} />
+                          Pay
+                        </button>
+                      )}
                       {!selectedTrainerDetails.isSavedFingerprints &&
-                        selectedTrainerDetails.paymentStatus !== 1 ? (
+                        (!selectedTrainerDetails.membershipPlanId || selectedTrainerDetails.paymentStatus !== 1) ? (
                         <button
                           onClick={openFingerprintModal}
                           className="inline-flex cursor-pointer items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-blue-700"
@@ -2345,19 +2470,8 @@ export default function Trainers() {
 
               <div className="max-h-[calc(92vh-88px)] overflow-y-auto px-5 py-5 sm:px-6 sm:py-6">
                 <div className="space-y-4">
-                  <div className="rounded-2xl border border-gray-200 bg-gray-50 px-4 py-4">
-                    <div className="flex items-center justify-between gap-4">
-                      <span className="text-sm font-medium text-gray-600">
-                        Price
-                      </span>
-                      <span className="text-base font-semibold text-gray-900">
-                        LKR{" "}
-                        {Number(
-                          selectedTrainerDetails?.membershipPlanPrice || 0,
-                        ).toLocaleString()}
-                      </span>
-                    </div>
-                  </div>
+                  <TrainerPaymentTotals id="trainer-payment-discount" price={paymentPrice}
+                    value={paymentDiscount} onChange={setPaymentDiscount} disabled={payLoading} />
 
                   <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
                     <label className="mb-3 block text-sm font-medium text-gray-900">
@@ -2417,7 +2531,7 @@ export default function Trainers() {
                     </button>
                     <button
                       onClick={handleSavePayment}
-                      disabled={payLoading}
+                      disabled={payLoading || !trainerPayment.isValid}
                       className="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-5 py-2 text-sm font-medium text-white transition hover:bg-blue-700 cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed"
                     >
                       {payLoading ? (
@@ -2690,6 +2804,16 @@ export default function Trainers() {
                             "Use a valid email address."}
                         </p>
                       </div>
+                      <div>
+                        <TrainerTypeField
+                          name="editTrainerType"
+                          value={editForm.trainerType}
+                          onChange={(type) => updateEditField("trainerType", type)}
+                        />
+                        {!editForm.membershipPlan && editForm.trainerType === "freelancer" && (
+                          <p className="mt-2 text-xs text-gray-600">Assign a membership plan before switching a gym trainer to Freelancer.</p>
+                        )}
+                      </div>
                     </div>
 
                     <div className="flex items-center justify-end gap-3 border-t border-gray-200 pt-4">
@@ -2764,12 +2888,10 @@ export default function Trainers() {
                       </select>
                     </div>
 
-                    <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
-                      <div className="flex items-center justify-between gap-4">
-                        <span className="text-sm font-medium text-gray-600">Selected Price</span>
-                        <span className="text-base font-semibold text-gray-900">LKR {Number(selectedMembershipChangePlan?.price || 0).toLocaleString()}</span>
-                      </div>
-                    </div>
+                    {selectedMembershipChangePlan && (
+                      <TrainerPaymentTotals id="trainer-membership-discount" price={selectedMembershipChangePlan.price}
+                        value={membershipDiscount} onChange={setMembershipDiscount} disabled={isSavingMembershipChange} />
+                    )}
 
                     <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
                       <label className="mb-3 block text-sm font-medium text-gray-900">Payment Type</label>
@@ -2793,7 +2915,7 @@ export default function Trainers() {
                     {membershipPaymentMethod === "receipt" && <PaymentReceiptField file={planReceipt} onChange={setPlanReceipt} required disabled={isSavingMembershipChange} />}
                     <div className="flex items-center justify-end gap-3 border-t border-gray-200 pt-4">
                       <button onClick={closeMembershipModal} className="rounded-lg border border-gray-200 px-4 py-2 text-sm font-medium text-gray-700 transition hover:bg-gray-50 cursor-pointer">Cancel</button>
-                      <button onClick={handleSaveMembershipChange} disabled={isSavingMembershipChange || !membershipPlanId} className="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-5 py-2 text-sm font-medium text-white transition hover:bg-blue-700 cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed">
+                      <button onClick={handleSaveMembershipChange} disabled={isSavingMembershipChange || !selectedMembershipChangePlan || !membershipPayment.isValid} className="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-5 py-2 text-sm font-medium text-white transition hover:bg-blue-700 cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed">
                         {isSavingMembershipChange ? <Loader2 size={16} className="animate-spin" /> : <ArrowRight size={16} />}
                         {isSavingMembershipChange ? "Saving..." : "Save Changes"}
                       </button>
